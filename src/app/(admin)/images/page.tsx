@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { PlusCircle, Trash2, Edit2, ImageIcon, Search, ExternalLink, X, ChevronLeft, ChevronRight, User } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
@@ -9,7 +9,7 @@ import { useSearchParams } from 'next/navigation'
 
 const PAGE_SIZE = 10
 
-export default function ImagesPage() {
+function ImagesContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const imageIdFilter = searchParams.get('id')
@@ -45,7 +45,6 @@ export default function ImagesPage() {
     setTotalCount(count || 0)
     setLoading(false)
     
-    // Auto-select if directed from captions
     if (imageIdFilter && data?.[0]) {
       setSelectedImage(data[0] as any)
     }
@@ -59,7 +58,7 @@ export default function ImagesPage() {
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
     if (!confirm('Are you sure you want to delete this asset?')) return
-    await supabase.from('images').delete().eq('id', id)
+    await (supabase.from('images') as any).delete().eq('id', id)
     fetchImages()
   }
 
@@ -67,10 +66,15 @@ export default function ImagesPage() {
     e.preventDefault()
     setIsSubmitting(true)
     if (editingImage) {
-      await supabase.from('images').update({ url: formData.url, image_description: formData.image_description }).eq('id', editingImage.id)
+      await (supabase.from('images') as any).update({ url: formData.url, image_description: formData.image_description }).eq('id', editingImage.id)
     } else {
       const { data: { user } } = await supabase.auth.getUser()
-      await supabase.from('images').insert({ url: formData.url, image_description: formData.image_description, is_public: true, profile_id: user?.id })
+      await (supabase.from('images') as any).insert({ 
+        url: formData.url, 
+        image_description: formData.image_description, 
+        is_public: true, 
+        profile_id: user?.id 
+      })
     }
     setIsSubmitting(false); setIsAdding(false); setEditingImage(null);
     setFormData({ url: '', image_description: '' }); fetchImages();
@@ -199,5 +203,18 @@ export default function ImagesPage() {
         )}
       </AnimatePresence>
     </div>
+  )
+}
+
+export default function ImagesPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center py-40 gap-6">
+        <div className="w-16 h-16 border-4 border-white/20 border-t-lime-400 rounded-full animate-spin shadow-2xl" />
+        <p className="text-white font-black tracking-widest uppercase text-xs animate-pulse italic">Synchronizing Assets...</p>
+      </div>
+    }>
+      <ImagesContent />
+    </Suspense>
   )
 }

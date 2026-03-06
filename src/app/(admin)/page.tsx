@@ -88,17 +88,17 @@ export default function Dashboard() {
         heatDays[dateStr] = 0
       }
 
-      recentUsers?.forEach(u => {
+      (recentUsers as any[])?.forEach(u => {
         const dateStr = new Date(u.created_datetime_utc).toISOString().split('T')[0]
         if (days[dateStr]) days[dateStr].users++
-      })
+      });
 
-      recentImages?.forEach(i => {
+      (recentImages as any[])?.forEach(i => {
         const dateStr = new Date(i.created_datetime_utc).toISOString().split('T')[0]
         if (days[dateStr]) days[dateStr].images++
-      })
+      });
 
-      recentCaptions?.forEach(c => {
+      (recentCaptions as any[])?.forEach(c => {
         const dateStr = new Date(c.created_datetime_utc).toISOString().split('T')[0]
         if (days[dateStr]) {
             days[dateStr].captions++
@@ -121,13 +121,13 @@ export default function Dashboard() {
         `)
         .limit(10)
 
-      setLeaderboard(leaderData?.map(d => {
+      setLeaderboard((leaderData as any[])?.map(d => {
         const name = `${d.first_name || ''} ${d.last_name || ''}`.trim()
         return {
           id: d.id,
           user: name || d.email || `User_${d.id.substring(0,5)}`,
-          images: (d.images as any)?.[0]?.count || 0,
-          captions: (d.captions as any)?.[0]?.count || 0
+          images: d.images?.[0]?.count || 0,
+          captions: d.captions?.[0]?.count || 0
         }
       }).sort((a, b) => (b.images * 10 + b.captions) - (a.images * 10 + a.captions)).slice(0, 5) || [])
 
@@ -178,7 +178,7 @@ export default function Dashboard() {
         </div>
 
         <div className="glass-card p-10 flex flex-col min-h-[450px]">
-          <h2 className="frutiger-text text-2xl mb-2">Caption Heatmap</h2>
+          <h2 className="frutiger-text text-2xl mb-2 text-blue-950">Caption Heatmap</h2>
           <div className="flex-1 flex items-center justify-center mt-4">
             {loading ? (
                <div className="text-blue-900/50 font-black tracking-widest uppercase text-xs animate-pulse">Loading...</div>
