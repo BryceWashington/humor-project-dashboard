@@ -6,6 +6,17 @@ export async function updateSession(request: NextRequest) {
     request,
   })
 
+  // 1. Skip middleware for static assets, images, and API calls to Supabase if proxied
+  if (
+    request.nextUrl.pathname.startsWith('/_next') ||
+    request.nextUrl.pathname.startsWith('/static') ||
+    request.nextUrl.pathname.includes('/favicon.ico') ||
+    request.nextUrl.pathname.includes('.') ||
+    request.nextUrl.pathname.startsWith('/auth/v1/') // Essential if using the same domain as proxy
+  ) {
+    return supabaseResponse
+  }
+
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -27,29 +38,26 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
+  // 2. Refresh the session if it exists
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth')) {
+  const isAuthPage = request.nextUrl.pathname.startsWith('/login') || 
+                     request.nextUrl.pathname.startsWith('/auth')
+
+  // 3. If no user and not on an auth page, redirect to login
+  if (!user && !isAuthPage) {
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  if (user) {
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('is_superadmin')
-      .eq('id', user.id)
-      .single()
-
-    if (!profile?.is_superadmin && !request.nextUrl.pathname.startsWith('/login') && !request.nextUrl.pathname.startsWith('/auth')) {
-       const url = request.nextUrl.clone()
-       url.pathname = '/login'
-       url.searchParams.set('error', 'unauthorized')
-       return NextResponse.redirect(url)
-    }
+  // 4. If user exists and trying to access login page, go to dashboard
+  if (user && isAuthPage && !request.nextUrl.searchParams.has('error')) {
+    const url = request.nextUrl.clone()
+    url.pathname = '/'
+    return NextResponse.redirect(url)
   }
 
   return supabaseResponse
