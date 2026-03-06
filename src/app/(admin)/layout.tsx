@@ -17,7 +17,8 @@ export default async function AdminLayout({
     redirect("/login")
   }
 
-  const { data: profile } = await supabase
+  // Use 'any' as a temporary measure to bypass the persistent type inference issue in this Next.js version
+  const { data: profile }: { data: any } = await supabase
     .from('profiles')
     .select('is_superadmin')
     .eq('id', user.id)
