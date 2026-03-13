@@ -9,12 +9,16 @@ import Link from 'next/link'
 
 const PAGE_SIZE = 10
 
+interface LLMModelWithProvider extends LLMModel {
+  llm_providers: { id: number; name: string } | null
+}
+
 function LLMModelsContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const idFilter = searchParams.get('id')
 
-  const [data, setData] = useState<LLMModel[]>([])
+  const [data, setData] = useState<LLMModelWithProvider[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
@@ -22,7 +26,7 @@ function LLMModelsContent() {
   
   const [isAdding, setIsAdding] = useState(false)
   const [editingItem, setEditingItem] = useState<LLMModel | null>(null)
-  const [selectedDetail, setSelectedDetail] = useState<LLMModel | null>(null)
+  const [selectedDetail, setSelectedDetail] = useState<LLMModelWithProvider | null>(null)
   const [providers, setProviders] = useState<LLMProvider[]>([])
   const [formData, setFormData] = useState({ name: '', llm_provider_id: 0, provider_model_id: '', is_temperature_supported: false })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -59,9 +63,9 @@ function LLMModelsContent() {
     e.preventDefault()
     setIsSubmitting(true)
     if (editingItem) {
-      await supabase.from('llm_models').update(formData).eq('id', editingItem.id)
+      await (supabase.from('llm_models') as any).update(formData).eq('id', editingItem.id)
     } else {
-      await supabase.from('llm_models').insert(formData)
+      await (supabase.from('llm_models') as any).insert(formData)
     }
     setIsSubmitting(false); setIsAdding(false); setEditingItem(null);
     setFormData({ name: '', llm_provider_id: providers[0]?.id || 0, provider_model_id: '', is_temperature_supported: false }); fetchData();
@@ -69,7 +73,7 @@ function LLMModelsContent() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('DELETE_MODEL: CONFIRM_ACTION?')) return
-    await supabase.from('llm_models').delete().eq('id', id)
+    await (supabase.from('llm_models') as any).delete().eq('id', id)
     fetchData()
   }
 

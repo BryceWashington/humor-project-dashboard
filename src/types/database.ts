@@ -19,7 +19,6 @@ export interface Image {
   image_description?: string
   is_public: boolean
   is_common_use: boolean
-  profiles?: Profile
 }
 
 export interface Caption {
@@ -35,8 +34,6 @@ export interface Caption {
   caption_request_id?: number
   like_count: number
   llm_prompt_chain_id?: number
-  profiles?: Profile
-  images?: Image
 }
 
 export interface HumorFlavor {
@@ -59,8 +56,6 @@ export interface HumorFlavorStep {
   llm_system_prompt?: string
   llm_user_prompt?: string
   description?: string
-  humor_flavors?: HumorFlavor
-  llm_models?: LLMModel
 }
 
 export interface HumorFlavorMix {
@@ -68,7 +63,6 @@ export interface HumorFlavorMix {
   created_datetime_utc: string
   humor_flavor_id: number
   caption_count: number
-  humor_flavors?: HumorFlavor
 }
 
 export interface Term {
@@ -87,8 +81,6 @@ export interface CaptionRequest {
   created_datetime_utc: string
   profile_id: string
   image_id: string
-  profiles?: Profile
-  images?: Image
 }
 
 export interface CaptionExample {
@@ -99,8 +91,7 @@ export interface CaptionExample {
   caption: string
   explanation: string
   priority: number
-  image_id?: string
-  images?: Image
+  image_id: string | null
 }
 
 export interface LLMModel {
@@ -110,7 +101,6 @@ export interface LLMModel {
   llm_provider_id: number
   provider_model_id: string
   is_temperature_supported: boolean
-  llm_providers?: LLMProvider
 }
 
 export interface LLMProvider {
@@ -139,9 +129,6 @@ export interface LLMModelResponse {
   humor_flavor_id: number
   llm_prompt_chain_id?: number
   humor_flavor_step_id?: number
-  profiles?: Profile
-  llm_models?: LLMModel
-  humor_flavors?: HumorFlavor
 }
 
 export interface AllowedSignupDomain {

@@ -45,9 +45,9 @@ export default function TermsPage() {
     e.preventDefault()
     setIsSubmitting(true)
     if (editingItem) {
-      await supabase.from('terms').update(formData).eq('id', editingItem.id)
+      await (supabase.from('terms') as any).update(formData).eq('id', editingItem.id)
     } else {
-      await supabase.from('terms').insert(formData)
+      await (supabase.from('terms') as any).insert(formData)
     }
     setIsSubmitting(false); setIsAdding(false); setEditingItem(null);
     setFormData({ term: '', definition: '', example: '', priority: 0 }); fetchData();
@@ -55,7 +55,7 @@ export default function TermsPage() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('DELETE_TERM: CONFIRM_ACTION?')) return
-    await supabase.from('terms').delete().eq('id', id)
+    await (supabase.from('terms') as any).delete().eq('id', id)
     fetchData()
   }
 
@@ -102,7 +102,7 @@ export default function TermsPage() {
               ) : data.length === 0 ? (
                 <tr><td colSpan={4} className="py-12 text-center text-terminal-dim">[ NO_TERMS_FOUND ]</td></tr>
               ) : data.map((item) => (
-                <tr key={item.id} onClick={() => setEditingItem(null) || setSelectedDetail(item)} className="cursor-pointer group">
+                <tr key={item.id} onClick={() => { setEditingItem(null); setSelectedDetail(item); }} className="cursor-pointer group">
                   <td className="px-4 py-3 font-bold text-terminal-accent uppercase text-xs truncate">{item.term}</td>
                   <td className="px-4 py-3 text-xs italic text-terminal-dim truncate">{item.definition}</td>
                   <td className="px-4 py-3 text-right text-[10px] font-bold">{item.priority}</td>

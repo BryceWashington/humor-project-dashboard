@@ -9,18 +9,22 @@ import Link from 'next/link'
 
 const PAGE_SIZE = 10
 
+interface ImageWithProfile extends DBImage {
+  profiles: { first_name: string | null; last_name: string | null; email: string | null } | null
+}
+
 function ImagesContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const imageIdFilter = searchParams.get('id')
 
-  const [images, setImages] = useState<DBImage[]>([])
+  const [images, setImages] = useState<ImageWithProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
 
-  const [selectedImage, setSelectedImage] = useState<DBImage | null>(null)
+  const [selectedImage, setSelectedImage] = useState<ImageWithProfile | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [editingImage, setEditingImage] = useState<DBImage | null>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)

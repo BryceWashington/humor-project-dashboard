@@ -9,17 +9,22 @@ import Link from 'next/link'
 
 const PAGE_SIZE = 10
 
+interface LLMModelResponseWithJoins extends LLMModelResponse {
+  llm_models: { id: number; name: string } | null
+  humor_flavors: { id: number; slug: string } | null
+}
+
 function LLMResponsesContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const idFilter = searchParams.get('id')
 
-  const [data, setData] = useState<LLMModelResponse[]>([])
+  const [data, setData] = useState<LLMModelResponseWithJoins[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   
-  const [selectedItem, setSelectedItem] = useState<LLMModelResponse | null>(null)
+  const [selectedItem, setSelectedItem] = useState<LLMModelResponseWithJoins | null>(null)
 
   useEffect(() => {
     async function fetchData() {

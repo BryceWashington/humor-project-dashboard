@@ -57,9 +57,9 @@ function WhitelistedEmailsContent() {
     e.preventDefault()
     setIsSubmitting(true)
     if (editingItem) {
-      await supabase.from('whitelist_email_addresses').update(formData).eq('id', editingItem.id)
+      await (supabase.from('whitelist_email_addresses') as any).update(formData).eq('id', editingItem.id)
     } else {
-      await supabase.from('whitelist_email_addresses').insert(formData)
+      await (supabase.from('whitelist_email_addresses') as any).insert(formData)
     }
     setIsSubmitting(false); setIsAdding(false); setEditingItem(null);
     setFormData({ email_address: '' }); fetchData();
@@ -67,7 +67,7 @@ function WhitelistedEmailsContent() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('DELETE_EMAIL: CONFIRM_ACTION?')) return
-    await supabase.from('whitelist_email_addresses').delete().eq('id', id)
+    await (supabase.from('whitelist_email_addresses') as any).delete().eq('id', id)
     fetchData()
   }
 

@@ -9,18 +9,22 @@ import Link from 'next/link'
 
 const PAGE_SIZE = 10
 
+interface HumorFlavorMixWithFlavor extends HumorFlavorMix {
+  humor_flavors: { id: number; slug: string } | null
+}
+
 function HumorMixContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const idFilter = searchParams.get('id')
 
-  const [data, setData] = useState<HumorFlavorMix[]>([])
+  const [data, setData] = useState<HumorFlavorMixWithFlavor[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   
   const [editingItem, setEditingItem] = useState<HumorFlavorMix | null>(null)
-  const [selectedDetail, setSelectedDetail] = useState<HumorFlavorMix | null>(null)
+  const [selectedDetail, setSelectedDetail] = useState<HumorFlavorMixWithFlavor | null>(null)
   const [flavors, setFlavors] = useState<HumorFlavor[]>([])
   const [formData, setFormData] = useState({ humor_flavor_id: 0, caption_count: 0 })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -57,7 +61,7 @@ function HumorMixContent() {
     e.preventDefault()
     if (!editingItem) return
     setIsSubmitting(true)
-    await supabase.from('humor_flavor_mix').update({ 
+    await (supabase.from('humor_flavor_mix') as any).update({ 
       humor_flavor_id: formData.humor_flavor_id,
       caption_count: formData.caption_count
     }).eq('id', editingItem.id)

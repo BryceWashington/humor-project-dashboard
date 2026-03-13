@@ -9,16 +9,21 @@ import Link from 'next/link'
 
 const PAGE_SIZE = 10
 
+interface CaptionRequestWithJoins extends CaptionRequest {
+  profiles: { first_name: string | null; last_name: string | null; email: string | null } | null
+  images: { id: string; url: string | null } | null
+}
+
 function CaptionRequestsContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const idFilter = searchParams.get('id')
 
-  const [data, setData] = useState<CaptionRequest[]>([])
+  const [data, setData] = useState<CaptionRequestWithJoins[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
-  const [selectedDetail, setSelectedDetail] = useState<CaptionRequest | null>(null)
+  const [selectedDetail, setSelectedDetail] = useState<CaptionRequestWithJoins | null>(null)
 
   useEffect(() => {
     async function fetchData() {

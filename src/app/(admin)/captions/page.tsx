@@ -6,20 +6,27 @@ import { createClient } from '@/utils/supabase/client'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 
+import { Caption, Profile, Image } from '@/types/database'
+
 const PAGE_SIZE = 10
+
+interface CaptionWithJoins extends Caption {
+  profiles: { first_name: string | null; last_name: string | null; email: string | null } | null
+  images: { id: string; url: string | null; image_description: string | null } | null
+}
 
 function CaptionsContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const captionIdFilter = searchParams.get('id')
 
-  const [captions, setCaptions] = useState<any[]>([])
+  const [captions, setCaptions] = useState<CaptionWithJoins[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   
-  const [selectedCaption, setSelectedCaption] = useState<any | null>(null)
+  const [selectedCaption, setSelectedCaption] = useState<CaptionWithJoins | null>(null)
 
   const fetchCaptions = async () => {
     setLoading(true)

@@ -57,9 +57,9 @@ function SignupDomainsContent() {
     e.preventDefault()
     setIsSubmitting(true)
     if (editingItem) {
-      await supabase.from('allowed_signup_domains').update(formData).eq('id', editingItem.id)
+      await (supabase.from('allowed_signup_domains') as any).update(formData).eq('id', editingItem.id)
     } else {
-      await supabase.from('allowed_signup_domains').insert(formData)
+      await (supabase.from('allowed_signup_domains') as any).insert(formData)
     }
     setIsSubmitting(false); setIsAdding(false); setEditingItem(null);
     setFormData({ apex_domain: '' }); fetchData();
@@ -67,7 +67,7 @@ function SignupDomainsContent() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('DELETE_DOMAIN: CONFIRM_ACTION?')) return
-    await supabase.from('allowed_signup_domains').delete().eq('id', id)
+    await (supabase.from('allowed_signup_domains') as any).delete().eq('id', id)
     fetchData()
   }
 

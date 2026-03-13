@@ -9,12 +9,16 @@ import Link from 'next/link'
 
 const PAGE_SIZE = 10
 
+interface CaptionExampleWithImage extends CaptionExample {
+  images: { id: string; url: string | null } | null
+}
+
 function CaptionExamplesContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const idFilter = searchParams.get('id')
 
-  const [data, setData] = useState<CaptionExample[]>([])
+  const [data, setData] = useState<CaptionExampleWithImage[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
@@ -22,7 +26,7 @@ function CaptionExamplesContent() {
   
   const [isAdding, setIsAdding] = useState(false)
   const [editingItem, setEditingItem] = useState<CaptionExample | null>(null)
-  const [selectedDetail, setSelectedDetail] = useState<CaptionExample | null>(null)
+  const [selectedDetail, setSelectedDetail] = useState<CaptionExampleWithImage | null>(null)
   const [formData, setFormData] = useState({ image_description: '', caption: '', explanation: '', priority: 0, image_id: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -59,9 +63,9 @@ function CaptionExamplesContent() {
     setIsSubmitting(true)
     const payload = { ...formData, image_id: formData.image_id || null }
     if (editingItem) {
-      await supabase.from('caption_examples').update(payload).eq('id', editingItem.id)
+      await (supabase.from('caption_examples') as any).update(payload).eq('id', editingItem.id)
     } else {
-      await supabase.from('caption_examples').insert(payload)
+      await (supabase.from('caption_examples') as any).insert(payload)
     }
     setIsSubmitting(false); setIsAdding(false); setEditingItem(null);
     setFormData({ image_description: '', caption: '', explanation: '', priority: 0, image_id: '' }); fetchData();
@@ -69,7 +73,7 @@ function CaptionExamplesContent() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('DELETE_EXAMPLE: CONFIRM_ACTION?')) return
-    await supabase.from('caption_examples').delete().eq('id', id)
+    await (supabase.from('caption_examples') as any).delete().eq('id', id)
     fetchData()
   }
 

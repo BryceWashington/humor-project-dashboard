@@ -57,9 +57,9 @@ function LLMProvidersContent() {
     e.preventDefault()
     setIsSubmitting(true)
     if (editingItem) {
-      await supabase.from('llm_providers').update(formData).eq('id', editingItem.id)
+      await (supabase.from('llm_providers') as any).update(formData).eq('id', editingItem.id)
     } else {
-      await supabase.from('llm_providers').insert(formData)
+      await (supabase.from('llm_providers') as any).insert(formData)
     }
     setIsSubmitting(false); setIsAdding(false); setEditingItem(null);
     setFormData({ name: '' }); fetchData();
@@ -67,7 +67,7 @@ function LLMProvidersContent() {
 
   const handleDelete = async (id: number) => {
     if (!confirm('DELETE_PROVIDER: CONFIRM_ACTION?')) return
-    await supabase.from('llm_providers').delete().eq('id', id)
+    await (supabase.from('llm_providers') as any).delete().eq('id', id)
     fetchData()
   }
 
