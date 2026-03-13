@@ -1,15 +1,18 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Users, Mail, ShieldCheck, Search, X, ChevronLeft, ChevronRight } from 'lucide-react'
+import { useEffect, useState, Suspense } from 'react'
+import { Users, Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { Profile } from '@/types/database'
+import { useSearchParams } from 'next/navigation'
 
 const PAGE_SIZE = 10
 
-export default function UsersPage() {
+function UsersContent() {
   const supabase = createClient()
+  const searchParams = useSearchParams()
+  const userIdFilter = searchParams.get('id')
+
   const [users, setUsers] = useState<Profile[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -22,9 +25,13 @@ export default function UsersPage() {
     async function fetchUsers() {
       setLoading(true)
       let query = supabase.from('profiles').select('*', { count: 'exact' })
-      if (search) {
+      
+      if (userIdFilter) {
+        query = query.eq('id', userIdFilter)
+      } else if (search) {
         query = query.or(`first_name.ilike.%${search}%,last_name.ilike.%${search}%,email.ilike.%${search}%`)
       }
+
       const { data, count } = await query
         .order('created_datetime_utc', { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
@@ -32,77 +39,83 @@ export default function UsersPage() {
       setUsers(data || [])
       setTotalCount(count || 0)
       setLoading(false)
+
+      if (userIdFilter && data?.[0]) {
+        setSelectedUser(data[0])
+      }
     }
     const timer = setTimeout(() => { fetchUsers() }, 300)
     return () => clearTimeout(timer)
-  }, [supabase, search, page])
+  }, [supabase, search, page, userIdFilter])
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500 pb-10">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-6 pb-10 font-mono text-terminal-fg">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-terminal-border pb-4">
         <div>
-          <h1 className="text-5xl frutiger-text">Users</h1>
-          <p className="text-blue-900 font-black tracking-[0.2em] uppercase text-xs italic mt-2">System Profile Management</p>
+          <div className="flex items-center gap-2 mb-1">
+            <Users className="w-4 h-4 text-terminal-accent" />
+            <span className="text-[10px] uppercase font-bold text-terminal-dim">System Directory [READ_ONLY]</span>
+          </div>
+          <h1 className="text-4xl font-bold tracking-tighter uppercase">User Registry</h1>
         </div>
         <div className="relative w-full md:w-96">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-900/40" />
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-terminal-dim text-[10px] tracking-widest font-bold">QUERY:</div>
           <input 
             type="text" 
-            placeholder="Search by name or email..." 
+            placeholder="FILTER_BY_IDENTITY..." 
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-            className="wii-input pl-14"
+            className="terminal-input pl-16 text-xs py-2"
           />
         </div>
       </header>
 
-      <div className="glass-card overflow-hidden">
+      <div className="terminal-card overflow-hidden !p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="terminal-table table-fixed">
             <thead>
-              <tr className="bg-white/20 border-b border-white/20 text-blue-900/60 text-[10px] font-black uppercase tracking-[0.3em] italic">
-                <th className="py-6 px-8">Identity</th>
-                <th className="py-6 px-8">Email Address</th>
-                <th className="py-6 px-8">Privileges</th>
-                <th className="py-6 px-8 text-right">Registration</th>
+              <tr>
+                <th className="px-4 w-1/3">NAME / IDENTITY</th>
+                <th className="px-4 w-1/3">EMAIL_ADDR</th>
+                <th className="px-4 w-32">PRVLGS</th>
+                <th className="px-4 text-right w-32">REG_DATE</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/10">
+            <tbody>
               {loading && users.length === 0 ? (
-                <tr><td colSpan={4} className="py-24 text-center text-blue-900/50 font-black uppercase text-xs animate-pulse">Accessing Records...</td></tr>
+                <tr><td colSpan={4} className="py-12 text-center text-terminal-dim animate-pulse">[ ACCESSING_RECORDS... ]</td></tr>
+              ) : users.length === 0 ? (
+                <tr><td colSpan={4} className="py-12 text-center text-terminal-dim">[ NO_RECORDS_FOUND ]</td></tr>
               ) : users.map((user) => (
                 <tr 
                   key={user.id}
                   onClick={() => setSelectedUser(user)}
-                  className="text-blue-950 hover:bg-white/40 transition-colors cursor-pointer group"
+                  className="cursor-pointer group"
                 >
-                  <td className="py-6 px-8">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-white/60 border border-white text-blue-900 flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform">
-                        <Users className="w-5 h-5" />
-                      </div>
-                      <span className="font-black tracking-tight text-lg">
-                        {user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim() : 'Unnamed User'}
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-terminal-dim font-bold text-xs">{'>'}</span>
+                      <span className="font-bold tracking-tight truncate">
+                        {user.first_name || user.last_name ? `${user.first_name || ''} ${user.last_name || ''}`.trim().toUpperCase() : 'NULL_USER'}
                       </span>
                     </div>
                   </td>
-                  <td className="py-6 px-8">
-                    <span className="font-bold text-blue-900/70">{user.email || '—'}</span>
+                  <td className="px-4 py-3 text-xs">
+                    <span className="text-terminal-dim truncate block">{user.email || '—'}</span>
                   </td>
-                  <td className="py-6 px-8">
+                  <td className="px-4 py-3">
                     {user.is_superadmin ? (
-                      <span className="flex items-center gap-1.5 bg-white/60 text-blue-900 text-[9px] px-3 py-1.5 rounded-full font-black uppercase tracking-widest border border-white shadow-sm">
-                        <ShieldCheck className="w-3 h-3 text-lime-600" />
-                        Superadmin
+                      <span className="bg-terminal-accent text-terminal-bg text-[9px] px-2 py-0.5 font-bold uppercase tracking-widest">
+                        SUPER_ADMIN
                       </span>
                     ) : (
-                      <span className="text-[10px] font-black text-blue-900/40 uppercase tracking-widest">Standard</span>
+                      <span className="text-[9px] font-bold text-terminal-dim uppercase tracking-widest">STANDARD</span>
                     )}
                   </td>
-                  <td className="py-6 px-8 text-right">
-                    <span className="font-black italic text-blue-900/50 text-xs">{new Date(user.created_datetime_utc).toLocaleDateString()}</span>
+                  <td className="px-4 py-3 text-right text-xs">
+                    <span className="text-terminal-dim">{new Date(user.created_datetime_utc).toLocaleDateString()}</span>
                   </td>
                 </tr>
               ))}
@@ -112,39 +125,91 @@ export default function UsersPage() {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-8 mt-12">
-          <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="glossy-button-secondary !p-4 disabled:opacity-20 shadow-xl"><ChevronLeft className="w-6 h-6" /></button>
-          <span className="text-xl font-black text-blue-900 drop-shadow-sm">{page + 1} <span className="text-xs text-blue-900/40 uppercase tracking-widest ml-2">/ {totalPages}</span></span>
-          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1} className="glossy-button-secondary !p-4 disabled:opacity-20 shadow-xl"><ChevronRight className="w-6 h-6" /></button>
+        <div className="flex justify-between items-center mt-6 border-t border-terminal-border pt-6">
+          <div className="text-[10px] text-terminal-dim uppercase font-bold">
+            RECORDS: {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, totalCount)} OF {totalCount}
+          </div>
+          <div className="flex items-center gap-4">
+            <button 
+                onClick={() => setPage(p => Math.max(0, p - 1))} 
+                disabled={page === 0} 
+                className="terminal-button !py-1 !px-2 disabled:opacity-20"
+            >
+                <ChevronLeft className="w-4 h-4" />
+            </button>
+            <span className="text-xs font-bold tracking-widest uppercase">PAGE {page + 1} / {totalPages}</span>
+            <button 
+                onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} 
+                disabled={page === totalPages - 1} 
+                className="terminal-button !py-1 !px-2 disabled:opacity-20"
+            >
+                <ChevronRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
-      <AnimatePresence>
-        {selectedUser && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay" onClick={() => setSelectedUser(null)}>
-            <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 50 }} onClick={(e) => e.stopPropagation()} className="modal-content !max-w-2xl shadow-[0_50px_150px_rgba(0,0,0,0.3)] border-white/60">
-              <button onClick={() => setSelectedUser(null)} className="absolute top-8 right-8 p-3 bg-white/40 backdrop-blur-xl text-blue-900 rounded-full hover:bg-white/60 transition-all border border-white shadow-xl hover:scale-110 active:scale-90 z-20"><X className="w-6 h-6" /></button>
-              <div className="flex items-center gap-8 mb-12 relative z-10">
-                <div className="w-24 h-24 rounded-[2rem] bg-white/60 text-blue-900 flex items-center justify-center border border-white shadow-2xl relative"><Users className="w-12 h-12" /></div>
-                <div>
-                  <h2 className="text-4xl frutiger-text leading-tight">{selectedUser.first_name || selectedUser.last_name ? `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim() : 'Unnamed User'}</h2>
-                  <p className="text-blue-900/80 font-black tracking-widest uppercase text-xs mt-2 italic">{selectedUser.email || 'No Email Provided'}</p>
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={() => setSelectedUser(null)}>
+          <div className="terminal-card w-full max-w-2xl !p-0 border border-terminal-border shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="bg-terminal-header border-b border-terminal-border text-terminal-fg p-3 flex justify-between items-center px-4 font-bold">
+              <div className="flex items-center gap-2 text-[10px] tracking-widest uppercase">
+                <Users className="w-3 h-3 text-terminal-accent" />
+                User Profile
+              </div>
+              <button onClick={() => setSelectedUser(null)} className="text-terminal-dim hover:text-terminal-fg transition-colors">
+                [X]
+              </button>
+            </div>
+            
+            <div className="p-8 space-y-8">
+              <div className="flex items-start gap-6 border-b border-terminal-border pb-8">
+                <div className="w-20 h-20 border border-terminal-border flex items-center justify-center bg-terminal-header">
+                  <Users className="w-10 h-10 text-terminal-dim" />
+                </div>
+                <div className="space-y-1">
+                  <h2 className="text-3xl font-bold uppercase tracking-tighter text-terminal-fg">
+                    {selectedUser.first_name || selectedUser.last_name ? `${selectedUser.first_name || ''} ${selectedUser.last_name || ''}`.trim() : 'NULL_USER'}
+                  </h2>
+                  <p className="text-terminal-dim text-xs font-bold uppercase tracking-widest">{selectedUser.email || 'NO_EMAIL_RECORD'}</p>
                 </div>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-8 relative z-10">
-                <div className="bg-white/30 backdrop-blur-md p-6 rounded-3xl border border-white/40 shadow-inner">
-                  <p className="text-[10px] font-black text-blue-900/50 uppercase tracking-[0.3em] mb-2 italic">Global Identifier</p>
-                  <p className="font-mono text-xs text-blue-950 bg-black/5 p-4 rounded-2xl border border-white/20 break-all font-black">{selectedUser.id}</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="border border-terminal-border p-4 bg-terminal-header space-y-2">
+                  <p className="text-[10px] font-bold text-terminal-dim uppercase tracking-widest">GLOBAL_UID</p>
+                  <p className="font-mono text-[10px] break-all text-terminal-fg">{selectedUser.id}</p>
                 </div>
-                <div className="bg-white/30 backdrop-blur-md p-6 rounded-3xl border border-white/40 shadow-inner">
-                  <p className="text-[10px] font-black text-blue-900/50 uppercase tracking-[0.3em] mb-2 italic">System Registration</p>
-                  <p className="font-black text-blue-950 bg-white/20 p-4 rounded-2xl border border-white/20 text-center"> {new Date(selectedUser.created_datetime_utc).toLocaleString()} </p>
+                <div className="border border-terminal-border p-4 bg-terminal-header space-y-2">
+                  <p className="text-[10px] font-bold text-terminal-dim uppercase tracking-widest">REGISTRATION</p>
+                  <p className="font-bold text-xs text-terminal-fg uppercase"> {new Date(selectedUser.created_datetime_utc).toLocaleString()} </p>
                 </div>
               </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+              <div className="flex justify-end pt-4">
+                <button 
+                  onClick={() => setSelectedUser(null)}
+                  className="terminal-button"
+                >
+                  CLOSE
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+  )
+}
+
+export default function UsersPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col items-center justify-center py-40 gap-4 font-mono">
+        <div className="text-terminal-dim animate-pulse font-bold tracking-[0.2em]">[ ACCESSING_USER_REGISTRY... ]</div>
+      </div>
+    }>
+      <UsersContent />
+    </Suspense>
   )
 }

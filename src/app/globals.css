@@ -1,78 +1,104 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-frutiger-sky: #00AEEF;
-  --color-frutiger-lime: #8DC63F;
-  --color-frutiger-water: #00B2B2;
-  --color-frutiger-bubble: #E1F5FE;
+  --color-terminal-accent: #00ff41;
+  --color-terminal-bg: #0a0a0a;
+  --color-terminal-fg: #ffffff;
+  --color-terminal-dim: #a1a1aa;
+  --color-terminal-border: #3f3f46;
+  --color-terminal-header: #18181b;
   
-  --radius-frutiger: 24px;
+  --radius-none: 0px;
 }
 
 :root {
-  --background: #f0f9ff;
-  --foreground: #0f172a;
-  --glass-bg: rgba(255, 255, 255, 0.4);
-  --glass-border: rgba(255, 255, 255, 0.6);
+  --background: #0a0a0a;
+  --foreground: #f4f4f5;
 }
 
 @layer base {
   body {
-    background: linear-gradient(135deg, #00AEEF 0%, #8DC63F 50%, #00B2B2 100%);
-    background-attachment: fixed;
-    min-height: 100vh;
+    background-color: var(--background);
     color: var(--foreground);
-    @apply antialiased;
+    font-family: 'ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', "Liberation Mono", "Courier New", monospace;
+    @apply antialiased min-h-screen selection:bg-terminal-accent selection:text-terminal-bg;
   }
 }
 
 @layer components {
-  .glass-card {
-    @apply backdrop-blur-2xl bg-white/40 border border-white/60 shadow-xl rounded-[2rem];
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+  .terminal-card {
+    @apply border border-terminal-border bg-terminal-bg p-4;
     position: relative;
-    overflow: hidden;
   }
 
-  .glass-card::before {
-    content: '';
-    position: absolute;
+  .terminal-header {
+    @apply bg-terminal-fg text-terminal-bg px-2 py-0.5 font-bold uppercase tracking-widest text-xs mb-4 inline-block;
+  }
+  
+  .terminal-button {
+    @apply px-4 py-2 border border-terminal-border bg-transparent text-terminal-fg hover:bg-terminal-fg hover:text-terminal-bg transition-colors font-bold uppercase text-sm flex items-center gap-2;
+  }
+
+  .terminal-button-accent {
+    @apply px-4 py-2 border border-terminal-accent bg-transparent text-terminal-accent hover:bg-terminal-accent hover:text-terminal-bg transition-colors font-bold uppercase text-sm flex items-center gap-2;
+  }
+
+  .terminal-button-active {
+    @apply bg-terminal-fg text-terminal-bg;
+  }
+
+  .terminal-input {
+    @apply w-full bg-terminal-bg border border-terminal-border p-3 text-terminal-fg focus:outline-none focus:border-terminal-accent placeholder:text-terminal-dim font-mono;
+  }
+
+  .terminal-table {
+    @apply w-full border-collapse;
+  }
+
+  .terminal-table th {
+    @apply border border-terminal-border p-2 text-left bg-terminal-header text-terminal-dim uppercase text-[10px] tracking-widest font-bold overflow-hidden whitespace-nowrap;
+  }
+
+  .terminal-table td {
+    @apply border border-terminal-border p-2 text-sm overflow-hidden;
+  }
+
+  .terminal-table tr:hover td {
+    @apply bg-white/[0.02];
+  }
+
+  .scanline {
+    width: 100%;
+    height: 100px;
+    z-index: 999;
+    background: linear-gradient(
+      0deg,
+      rgba(0, 0, 0, 0) 0%,
+      rgba(255, 255, 255, 0.01) 50%,
+      rgba(0, 0, 0, 0) 100%
+    );
+    opacity: 0.1;
+    position: fixed;
+    bottom: 100%;
+    animation: scanline 10s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes scanline {
+    0% { bottom: 100%; }
+    100% { bottom: -100px; }
+  }
+
+  /* CRT Flicker effect */
+  .crt-overlay {
+    position: fixed;
     top: 0;
     left: 0;
-    right: 0;
-    height: 40%;
-    background: linear-gradient(to bottom, rgba(255,255,255,0.5), transparent);
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 118, 0.06));
+    z-index: 1000;
+    background-size: 100% 2px, 3px 100%;
     pointer-events: none;
-    border-radius: 2rem 2rem 0 0;
-  }
-  
-  .glossy-button {
-    @apply relative overflow-hidden bg-gradient-to-b from-white/60 to-white/20 border-t border-white/70 rounded-full px-8 py-2.5 shadow-md transition-all hover:scale-105 active:scale-95 text-blue-900 font-black tracking-wider;
-  }
-
-  .glossy-button::after {
-    content: '';
-    @apply absolute top-0 left-0 w-full h-1/2 bg-gradient-to-b from-white/40 to-transparent;
-  }
-
-  .glossy-button-secondary {
-    @apply relative overflow-hidden bg-white/30 backdrop-blur-md text-blue-900 border border-white/40 rounded-full px-8 py-2.5 font-bold tracking-wide transition-all hover:bg-white/50 active:scale-95;
-  }
-  
-  .frutiger-text {
-    @apply font-black tracking-tight text-white;
-    text-shadow: 0 2px 10px rgba(0,0,0,0.2);
-  }
-
-  .modal-overlay {
-    @apply fixed inset-0 bg-black/20 backdrop-blur-md z-50 flex items-center justify-center p-4;
-  }
-  
-  .modal-content {
-    @apply bg-white/60 backdrop-blur-3xl border border-white/80 rounded-[3rem] shadow-[0_40px_100px_rgba(0,0,0,0.2)] !p-12 max-w-2xl w-full max-h-[90vh] overflow-y-auto relative;
-  }
-
-  .wii-input {
-    @apply w-full bg-white/40 backdrop-blur-sm border border-white/60 rounded-2xl px-5 py-4 text-blue-950 placeholder-blue-900/50 shadow-inner focus:outline-none focus:ring-4 focus:ring-white/30 focus:border-white transition-all font-bold;
   }
 }

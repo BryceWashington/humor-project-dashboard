@@ -1,11 +1,11 @@
 'use client'
 
-import { useEffect, useState, Suspense } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { PlusCircle, Trash2, Edit2, ImageIcon, Search, ExternalLink, X, ChevronLeft, ChevronRight, User } from 'lucide-react'
+import { useEffect, useState, Suspense, useRef } from 'react'
+import { PlusCircle, Trash2, Edit2, ImageIcon, Search, ExternalLink, X, ChevronLeft, ChevronRight, User, Database, Upload } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { Image as DBImage } from '@/types/database'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 const PAGE_SIZE = 10
 
@@ -23,6 +23,8 @@ function ImagesContent() {
   const [selectedImage, setSelectedImage] = useState<DBImage | null>(null)
   const [isAdding, setIsAdding] = useState(false)
   const [editingImage, setEditingImage] = useState<DBImage | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   
   const [formData, setFormData] = useState({ url: '', image_description: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -57,7 +59,7 @@ function ImagesContent() {
 
   const handleDelete = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation()
-    if (!confirm('Are you sure you want to delete this asset?')) return
+    if (!confirm('CONFIRM_DELETION: Are you sure you want to delete this asset?')) return
     await (supabase.from('images') as any).delete().eq('id', id)
     fetchImages()
   }
@@ -65,77 +67,136 @@ function ImagesContent() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    if (editingImage) {
-      await (supabase.from('images') as any).update({ url: formData.url, image_description: formData.image_description }).eq('id', editingImage.id)
-    } else {
-      const { data: { user } } = await supabase.auth.getUser()
-      await (supabase.from('images') as any).insert({ 
-        url: formData.url, 
-        image_description: formData.image_description, 
-        is_public: true, 
-        profile_id: user?.id 
-      })
+    
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const token = session?.access_token
+
+      let imageUrl = formData.url
+      let targetImageId = editingImage?.id
+
+      if (selectedFile && !editingImage) {
+        const presignedResponse = await fetch('https://api.almostcrackd.ai/pipeline/generate-presigned-url', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ contentType: selectedFile.type })
+        })
+        
+        if (!presignedResponse.ok) throw new Error('FAILED_PRESIGNED_URL_GENERATION')
+        const { presignedUrl, cdnUrl } = await presignedResponse.json()
+
+        const uploadResponse = await fetch(presignedUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': selectedFile.type },
+          body: selectedFile
+        })
+        
+        if (!uploadResponse.ok) throw new Error('FAILED_IMAGE_UPLOAD_TO_S3')
+
+        const registerResponse = await fetch('https://api.almostcrackd.ai/pipeline/upload-image-from-url', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ imageUrl: cdnUrl, isCommonUse: false })
+        })
+        
+        if (!registerResponse.ok) throw new Error('FAILED_IMAGE_REGISTRATION_IN_PIPELINE')
+        const { imageId } = await registerResponse.json()
+        
+        imageUrl = cdnUrl
+        targetImageId = imageId
+      }
+
+      if (targetImageId) {
+        await (supabase.from('images') as any).update({ 
+          url: imageUrl, 
+          image_description: formData.image_description 
+        }).eq('id', targetImageId)
+      } else {
+        const { data: { user } } = await supabase.auth.getUser()
+        await (supabase.from('images') as any).insert({ 
+          url: imageUrl, 
+          image_description: formData.image_description, 
+          is_public: true, 
+          profile_id: user?.id 
+        })
+      }
+      
+      setIsSubmitting(false); setIsAdding(false); setEditingImage(null);
+      setFormData({ url: '', image_description: '' }); setSelectedFile(null);
+      fetchImages();
+    } catch (error) {
+      console.error('SAVE_FAILED:', error)
+      alert('SAVE_FAILED: Check console for details.')
+      setIsSubmitting(false)
     }
-    setIsSubmitting(false); setIsAdding(false); setEditingImage(null);
-    setFormData({ url: '', image_description: '' }); fetchImages();
   }
 
   const openEdit = (e: React.MouseEvent, img: DBImage) => {
-    e.stopPropagation(); setEditingImage(img);
+    if (e) e.stopPropagation();
+    setEditingImage(img);
     setFormData({ url: img.url || '', image_description: img.image_description || '' });
   }
 
   const totalPages = Math.ceil(totalCount / PAGE_SIZE)
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-500 pb-10">
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+    <div className="space-y-6 pb-10 font-mono text-terminal-fg">
+      <header className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-terminal-border pb-4">
         <div>
-          <h1 className="text-5xl frutiger-text">Images</h1>
+           <div className="flex items-center gap-2 mb-1">
+            <ImageIcon className="w-4 h-4 text-terminal-accent" />
+            <span className="text-[10px] uppercase font-bold text-terminal-dim">Asset Registry [CRUD]</span>
+          </div>
+          <h1 className="text-4xl font-bold tracking-tighter uppercase">Image Assets</h1>
         </div>
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
           <div className="relative flex-1 md:w-80">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-blue-900/40" />
-            <input type="text" placeholder="Search descriptions..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} className="wii-input pl-14" />
+            <div className="absolute left-3 top-1/2 -translate-y-1/2 text-terminal-dim text-[10px] tracking-widest font-bold">FIND:</div>
+            <input type="text" placeholder="FILTER_BY_DESC..." value={search} onChange={(e) => { setSearch(e.target.value); setPage(0); }} className="terminal-input pl-14 py-2 text-xs" />
           </div>
-          <button onClick={() => setIsAdding(true)} className="glossy-button flex items-center justify-center gap-3 !from-lime-400 !to-lime-600 shadow-xl whitespace-nowrap"><PlusCircle className="w-6 h-6" />Add Image</button>
+          <button onClick={() => setIsAdding(true)} className="terminal-button-accent"><PlusCircle className="w-4 h-4" />[ NEW_ASSET ]</button>
         </div>
       </header>
 
-      <div className="glass-card overflow-hidden">
+      <div className="terminal-card overflow-hidden !p-0">
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="terminal-table table-fixed">
             <thead>
-              <tr className="bg-white/20 border-b border-white/20 text-blue-900/60 text-[10px] font-black uppercase tracking-[0.3em] italic">
-                <th className="py-6 px-8">Preview</th>
-                <th className="py-6 px-8">Description</th>
-                <th className="py-6 px-8">Contributor</th>
-                <th className="py-6 px-8 text-right">Actions</th>
+              <tr>
+                <th className="px-4 w-28">PREVIEW</th>
+                <th className="px-4">DESCRIPTION_METADATA</th>
+                <th className="px-4 w-1/4">CONTRIBUTOR</th>
+                <th className="px-4 w-40 text-right">OPERATIONS</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/10">
+            <tbody>
               {loading && images.length === 0 ? (
-                <tr><td colSpan={4} className="py-24 text-center text-blue-900/50 font-black uppercase text-xs animate-pulse">Scanning Assets...</td></tr>
+                <tr><td colSpan={4} className="py-12 text-center text-terminal-dim animate-pulse">[ SCANNING_DATA_BLOCKS... ]</td></tr>
+              ) : images.length === 0 ? (
+                <tr><td colSpan={4} className="py-12 text-center text-terminal-dim">[ NO_ASSETS_DETECTED ]</td></tr>
               ) : images.map((img) => (
-                <tr key={img.id} onClick={() => setSelectedImage(img)} className="text-blue-950 hover:bg-white/40 transition-colors cursor-pointer group">
-                  <td className="py-4 px-8">
-                    <div className="w-20 aspect-video rounded-xl overflow-hidden bg-black/10 border border-white/40 shadow-sm relative">
-                      {img.url ? <img src={img.url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[8px] font-black opacity-30 uppercase">No Data</div>}
+                <tr key={img.id} onClick={() => setSelectedImage(img)} className="cursor-pointer group">
+                  <td className="px-4 py-3">
+                    <div className="w-16 aspect-video border border-terminal-border bg-black overflow-hidden relative grayscale hover:grayscale-0 transition-all opacity-40 hover:opacity-100">
+                      {img.url ? <img src={img.url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center text-[8px] text-terminal-dim">NULL</div>}
                     </div>
                   </td>
-                  <td className="py-4 px-8">
-                    <p className="text-sm font-black italic text-blue-900/80 leading-relaxed line-clamp-2 max-w-md">{img.image_description || 'No description provided.'}</p>
+                  <td className="px-4 py-3">
+                    <p className="text-xs text-terminal-fg/80 truncate italic">{img.image_description || '[ NO_DESC ]'}</p>
                   </td>
-                  <td className="py-4 px-8">
-                    <div className="flex items-center gap-2">
-                      <div className="w-1.5 h-1.5 rounded-full bg-lime-500 shadow-[0_0_8px_rgba(141,198,63,0.8)]" />
-                      <span className="font-bold text-xs uppercase tracking-wider text-blue-900/60">{img.profiles ? `${img.profiles.first_name || ''} ${img.profiles.last_name || ''}`.trim() : 'System'}</span>
-                    </div>
+                  <td className="px-4 py-3 text-[10px]">
+                    <span className="text-terminal-dim font-bold uppercase truncate block">{img.profiles ? `${img.profiles.first_name || ''} ${img.profiles.last_name || ''}`.trim().toUpperCase() : 'SYS'}</span>
                   </td>
-                  <td className="py-4 px-8 text-right">
-                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-all">
-                      <button onClick={(e) => openEdit(e, img)} className="p-2.5 bg-white/60 rounded-xl text-blue-900 border border-white shadow-sm hover:scale-110 transition-transform"><Edit2 className="w-4 h-4" /></button>
-                      <button onClick={(e) => handleDelete(e, img.id)} className="p-2.5 bg-white/60 rounded-xl text-red-600 border border-white shadow-sm hover:scale-110 transition-transform"><Trash2 className="w-4 h-4" /></button>
+                  <td className="px-4 py-3 text-right" onClick={e => e.stopPropagation()}>
+                    <div className="flex justify-end gap-3 text-[10px] font-bold uppercase tracking-widest whitespace-nowrap">
+                      <button onClick={(e) => openEdit(e, img)} className="text-terminal-dim hover:text-terminal-accent transition-colors whitespace-nowrap">[ EDIT ]</button>
+                      <button onClick={(e) => handleDelete(e, img.id)} className="text-terminal-dim hover:text-red-500 transition-colors whitespace-nowrap">[ DEL ]</button>
                     </div>
                   </td>
                 </tr>
@@ -146,62 +207,152 @@ function ImagesContent() {
       </div>
 
       {totalPages > 1 && (
-        <div className="flex justify-center items-center gap-8 mt-12">
-          <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="glossy-button-secondary !p-4 disabled:opacity-20 shadow-xl"><ChevronLeft className="w-6 h-6" /></button>
-          <span className="text-xl font-black text-blue-900 drop-shadow-sm">{page + 1} <span className="text-xs text-blue-900/40 uppercase tracking-widest ml-2">/ {totalPages}</span></span>
-          <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1} className="glossy-button-secondary !p-4 disabled:opacity-20 shadow-xl"><ChevronRight className="w-6 h-6" /></button>
+        <div className="flex justify-between items-center mt-6 border-t border-terminal-border pt-6">
+           <div className="text-[10px] text-terminal-dim uppercase font-bold">
+            ENTRIES: {page * PAGE_SIZE + 1}-{Math.min((page + 1) * PAGE_SIZE, totalCount)} OF {totalCount}
+          </div>
+          <div className="flex items-center gap-4">
+            <button onClick={() => setPage(p => Math.max(0, p - 1))} disabled={page === 0} className="terminal-button !py-1 !px-2 disabled:opacity-20"><ChevronLeft className="w-4 h-4" /></button>
+            <span className="text-xs font-bold tracking-widest uppercase">PAGE {page + 1} / {totalPages}</span>
+            <button onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))} disabled={page === totalPages - 1} className="terminal-button !py-1 !px-2 disabled:opacity-20"><ChevronRight className="w-4 h-4" /></button>
+          </div>
         </div>
       )}
 
-      <AnimatePresence>
-        {selectedImage && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay" onClick={() => setSelectedImage(null)}>
-            <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 50 }} onClick={(e) => e.stopPropagation()} className="modal-content !max-w-5xl shadow-[0_50px_150px_rgba(0,0,0,0.4)] border-white/60">
-              <button onClick={() => setSelectedImage(null)} className="absolute top-8 right-8 p-3 bg-white/40 backdrop-blur-xl text-blue-900 rounded-full hover:bg-white/60 transition-all border border-white shadow-xl hover:scale-110 active:scale-90 z-20"><X className="w-6 h-6" /></button>
-              <div className="flex flex-col md:flex-row gap-12 relative z-10">
-                <div className="w-full md:w-3/5 bg-black/20 rounded-[2rem] overflow-hidden border border-white/40 flex items-center justify-center min-h-[400px] shadow-2xl relative">
-                  {selectedImage.url ? <img src={selectedImage.url} className="w-full h-full object-contain" /> : <span className="text-white/30 font-black uppercase text-xs">No Resource</span>}
-                </div>
-                <div className="w-full md:w-2/5 flex flex-col justify-center space-y-10">
-                  <div>
-                    <h2 className="text-[10px] font-black text-blue-900/50 uppercase tracking-[0.4em] mb-4 flex items-center gap-3 italic"><div className="w-2.5 h-2.5 rounded-full bg-lime-400 border border-white" />Asset Description</h2>
-                    <p className="text-sm font-black text-blue-950 leading-relaxed italic pr-6">{selectedImage.image_description || 'No detailed meta-data provided.'}</p>
+      {selectedImage && (
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center p-4 z-50 backdrop-blur-sm" onClick={() => setSelectedImage(null)}>
+          <div className="terminal-card w-full max-w-5xl !p-0 border border-terminal-border shadow-2xl" onClick={(e) => e.stopPropagation()}>
+             <div className="bg-terminal-header border-b border-terminal-border text-terminal-fg p-3 flex justify-between items-center px-4 font-bold">
+              <div className="flex items-center gap-2 text-[10px] tracking-widest uppercase">
+                <ImageIcon className="w-3 h-3 text-terminal-accent" />
+                Asset Inspector
+              </div>
+              <button onClick={() => setSelectedImage(null)} className="text-terminal-dim hover:text-terminal-fg transition-colors">[X]</button>
+            </div>
+            
+            <div className="p-8 flex flex-col md:flex-row gap-10">
+              <div className="w-full md:w-3/5 bg-black border border-terminal-border overflow-hidden flex items-center justify-center min-h-[400px] relative">
+                {selectedImage.url ? <img src={selectedImage.url} className="w-full h-full object-contain relative z-10" /> : <span className="text-terminal-dim text-xs">NULL_RESOURCE</span>}
+              </div>
+              <div className="w-full md:w-2/5 flex flex-col justify-between">
+                <div className="space-y-6">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-bold text-terminal-dim uppercase tracking-widest border-b border-terminal-border pb-2">METADATA_DESCRIPTION</p>
+                    <p className="text-sm leading-relaxed italic">{selectedImage.image_description || '[ NO_DATA_AVAILABLE ]'}</p>
                   </div>
-                  <div className="space-y-6 bg-white/20 backdrop-blur-md p-8 rounded-[2.5rem] border border-white/40 shadow-inner">
-                    <div className="flex items-center gap-5">
-                       <div className="w-14 h-14 bg-white/60 rounded-2xl shadow-xl flex items-center justify-center border border-white"><User className="w-7 h-7 text-blue-900" /></div>
-                       <div>
-                          <p className="text-[9px] font-black text-blue-900/40 uppercase tracking-widest mb-1 italic">Contributor</p>
-                          <p className="font-black text-blue-950 text-sm">{selectedImage.profiles ? `${selectedImage.profiles.first_name || ''} ${selectedImage.profiles.last_name || ''}`.trim() : 'System'}</p>
+                  
+                  <div className="space-y-4 pt-4">
+                    <div className="border border-terminal-border bg-terminal-header p-4 space-y-3">
+                       <div className="flex items-center gap-3">
+                          <User className="w-4 h-4 text-terminal-dim" />
+                          <div>
+                              <p className="text-[8px] font-bold text-terminal-dim uppercase mb-1">CONTRIBUTOR_ENTITY</p>
+                              <Link href={`/users?id=${selectedImage.profile_id}`} className="font-bold text-xs uppercase tracking-tight text-terminal-accent hover:underline">{selectedImage.profiles ? `${selectedImage.profiles.first_name || ''} ${selectedImage.profiles.last_name || ''}`.trim().toUpperCase() : 'SYSTEM'}</Link>
+                          </div>
+                       </div>
+                       <div className="space-y-1">
+                           <a href={selectedImage.url} target="_blank" className="terminal-button !py-2 w-full justify-center text-[10px] tracking-widest">
+                            [ VIEW_SOURCE ] <ExternalLink className="w-3 h-3 ml-2" />
+                           </a>
                        </div>
                     </div>
-                    <div><p className="text-[9px] font-black text-blue-900/40 uppercase tracking-widest mb-2 italic">Full Source</p><a href={selectedImage.url} target="_blank" className="glossy-button-secondary !py-4 w-full flex items-center justify-center gap-3 text-[10px] font-black tracking-widest shadow-2xl">VIEW RESOURCE <ExternalLink className="w-4 h-4 opacity-70" /></a></div>
                   </div>
                 </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {(isAdding || editingImage) && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="modal-overlay">
-            <motion.div initial={{ scale: 0.9, y: 50 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.9, y: 50 }} className="modal-content !max-w-md shadow-2xl border-white/60">
-              <button onClick={() => { setIsAdding(false); setEditingImage(null); }} className="absolute top-8 right-8 p-3 bg-white/20 text-blue-900 rounded-full hover:bg-white/40 transition-all border border-white/50 shadow-xl hover:scale-110"><X className="w-5 h-5" /></button>
-              <h2 className="text-4xl frutiger-text mb-10 flex items-center gap-4"><div className="w-4 h-4 bg-lime-400 rounded-full border border-white" />{editingImage ? 'Modify' : 'New'} Asset</h2>
-              <form onSubmit={handleSave} className="space-y-8 relative z-10">
-                <div><label className="block text-[10px] font-black text-blue-900/50 uppercase tracking-[0.3em] mb-3 ml-2 italic">Resource URL</label><input type="url" required value={formData.url} onChange={e => setFormData({...formData, url: e.target.value})} className="wii-input" /></div>
-                <div><label className="block text-[10px] font-black text-blue-900/50 uppercase tracking-[0.3em] mb-3 ml-2 italic">Description</label><textarea rows={4} value={formData.image_description} onChange={e => setFormData({...formData, image_description: e.target.value})} className="wii-input resize-none" /></div>
-                <div className="pt-6 flex justify-end gap-4">
-                  <button type="button" onClick={() => { setIsAdding(false); setEditingImage(null); }} className="glossy-button-secondary !py-4 !px-8">Discard</button>
-                  <button type="submit" disabled={isSubmitting} className="glossy-button !from-lime-400 !to-lime-600 shadow-2xl !py-4 !px-10 min-w-[140px]">{isSubmitting ? '...' : 'Save'}</button>
+                <div className="pt-8 flex justify-between items-center border-t border-terminal-border mt-auto">
+                    <div className="flex gap-6 whitespace-nowrap">
+                      <button 
+                        onClick={(e) => { const img = selectedImage; setSelectedImage(null); openEdit(null as any, img); }} 
+                        className="text-[10px] font-bold text-terminal-accent hover:underline uppercase tracking-widest whitespace-nowrap"
+                      >
+                        [ EDIT_ASSET ]
+                      </button>
+                      <button 
+                        onClick={(e) => { const id = selectedImage.id; setSelectedImage(null); handleDelete(null as any, id); }} 
+                        className="text-[10px] font-bold text-red-500 hover:underline uppercase tracking-widest whitespace-nowrap"
+                      >
+                        [ DELETE_ASSET ]
+                      </button>
+                    </div>
+                    <button onClick={() => setSelectedImage(null)} className="terminal-button justify-center font-bold tracking-widest text-[10px]">CLOSE</button>
                 </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(isAdding || editingImage) && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50">
+          <div className="terminal-card w-full max-w-md !p-0 border border-terminal-border shadow-2xl">
+            <div className="bg-terminal-header border-b border-terminal-border text-terminal-fg p-3 flex justify-between items-center px-4 font-bold uppercase text-[10px] tracking-widest">
+              <div>{editingImage ? 'UPDATE_ASSET' : 'CREATE_ASSET'}</div>
+              <button onClick={() => { setIsAdding(false); setEditingImage(null); }} className="text-terminal-dim hover:text-terminal-fg">[X]</button>
+            </div>
+            <form onSubmit={handleSave} className="p-6 space-y-6">
+              {!editingImage && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-terminal-dim uppercase block tracking-widest">UPLOAD_LOCAL_FILE</label>
+                    <input 
+                      type="file" 
+                      ref={fileInputRef}
+                      onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                      className="hidden"
+                      accept="image/*"
+                    />
+                    <button 
+                      type="button" 
+                      onClick={() => fileInputRef.current?.click()}
+                      className={`terminal-button w-full justify-center !py-3 ${selectedFile ? 'border-terminal-accent text-terminal-accent' : ''}`}
+                    >
+                      <Upload className="w-4 h-4" />
+                      {selectedFile ? `FILE_SELECTED: ${selectedFile.name.toUpperCase()}` : '[ SELECT_IMAGE_FILE ]'}
+                    </button>
+                    {selectedFile && (
+                      <button 
+                        type="button" 
+                        onClick={() => setSelectedFile(null)}
+                        className="text-[9px] text-red-500 font-bold uppercase tracking-widest block mx-auto hover:underline"
+                      >
+                        [ CLEAR_SELECTION ]
+                      </button>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-[1px] flex-1 bg-terminal-border" />
+                    <span className="text-[8px] text-terminal-dim font-bold uppercase tracking-widest">OR</span>
+                    <div className="h-[1px] flex-1 bg-terminal-border" />
+                  </div>
+                </div>
+              )}
+              
+              <div className="space-y-2">
+                <label className={`text-[10px] font-bold ${selectedFile ? 'text-terminal-dim' : 'text-terminal-fg'} uppercase block tracking-widest`}>
+                  {selectedFile ? 'RESOURCE_URL (DISABLED)' : 'RESOURCE_URL'}
+                </label>
+                <input 
+                  type="url" 
+                  required={!selectedFile}
+                  disabled={!!selectedFile}
+                  value={formData.url} 
+                  onChange={e => setFormData({...formData, url: e.target.value})} 
+                  className={`terminal-input py-2 text-xs ${selectedFile ? 'opacity-30 cursor-not-allowed' : ''}`} 
+                  placeholder="https://..." 
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-[10px] font-bold text-terminal-dim uppercase block tracking-widest">DESCRIPTION</label>
+                <textarea rows={4} value={formData.image_description} onChange={e => setFormData({...formData, image_description: e.target.value})} className="terminal-input py-2 text-xs resize-none" placeholder="Enter metadata..." />
+              </div>
+              <div className="pt-4 flex justify-end gap-4 items-center">
+                <button type="button" onClick={() => { setIsAdding(false); setEditingImage(null); setSelectedFile(null); }} className="text-terminal-dim hover:text-terminal-fg uppercase text-[10px] font-bold tracking-widest">[ DISCARD ]</button>
+                <button type="submit" disabled={isSubmitting} className="terminal-button-accent min-w-[120px] justify-center text-[10px]">{isSubmitting ? '[ ... ]' : '[ EXECUTE_SAVE ]'}</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -209,9 +360,8 @@ function ImagesContent() {
 export default function ImagesPage() {
   return (
     <Suspense fallback={
-      <div className="flex flex-col items-center justify-center py-40 gap-6">
-        <div className="w-16 h-16 border-4 border-white/20 border-t-lime-400 rounded-full animate-spin shadow-2xl" />
-        <p className="text-white font-black tracking-widest uppercase text-xs animate-pulse italic">Synchronizing Assets...</p>
+      <div className="flex flex-col items-center justify-center py-40 gap-4 font-mono">
+        <div className="text-terminal-accent animate-pulse font-bold tracking-[0.2em]">[ SYNCING_IMAGE_REPOSITORY... ]</div>
       </div>
     }>
       <ImagesContent />

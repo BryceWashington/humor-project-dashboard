@@ -1,8 +1,7 @@
 'use client'
 
 import { createClient } from '@/utils/supabase/client'
-import { motion } from 'framer-motion'
-import { LogIn, AlertCircle } from 'lucide-react'
+import { LogIn, AlertCircle, ShieldCheck, Terminal as TerminalIcon } from 'lucide-react'
 import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 
@@ -11,6 +10,29 @@ function LoginContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error')
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [bootSequence, setBootSequence] = useState<string[]>([])
+
+  useEffect(() => {
+    const lines = [
+      '> INITIALIZING BOOT SEQUENCE...',
+      '> CHECKING SYSTEM INTEGRITY...',
+      '> LOADING SECURITY PROTOCOLS...',
+      '> ESTABLISHING ENCRYPTED LINK...',
+      '> READY FOR AUTHENTICATION.'
+    ]
+    
+    let i = 0;
+    const interval = setInterval(() => {
+      if (i < lines.length) {
+        setBootSequence(prev => [...prev, lines[i]])
+        i++
+      } else {
+        clearInterval(interval)
+      }
+    }, 400)
+
+    return () => clearInterval(interval)
+  }, [])
 
   useEffect(() => {
     if (error === 'unauthorized') {
@@ -26,57 +48,45 @@ function LoginContent() {
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        queryParams: {
+          prompt: 'select_account',
+          access_type: 'offline',
+        }
       },
     })
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6 bg-[#f1f5f9] fixed inset-0">
-      {/* Background Decor */}
-      <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-[#00b0f0]/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-[#8DC63F]/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
-      </div>
-
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9, y: 30 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }}
-        className="glass-card w-full max-w-md p-12 text-center relative shadow-[0_30px_100px_rgba(0,176,240,0.15)]"
-      >
-        <div className="relative z-10 flex flex-col items-center">
-          <div className="w-24 h-24 bg-gradient-to-br from-[#e0f4fc] to-white rounded-full flex items-center justify-center mb-8 shadow-inner border border-white/50">
-            <LogIn className="w-10 h-10 text-[#00b0f0] drop-shadow-sm" />
-          </div>
-
-          <h1 className="text-4xl frutiger-text text-gray-800 mb-2">System Access</h1>
-          <p className="text-gray-500 font-black tracking-widest uppercase text-[10px] mb-10 opacity-60 italic">Humor Project Administration</p>
-
-          {error === 'unauthorized' && (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-red-50/80 backdrop-blur-md text-red-600 border border-red-200 rounded-2xl p-6 mb-8 flex flex-col items-center gap-3 w-full shadow-lg"
-            >
-              <AlertCircle className="w-8 h-8 text-red-500" />
-              <div className="text-lg font-black tracking-tight">ACCESS DENIED</div>
-              <div className="text-sm font-bold text-red-500/80 leading-tight italic">Your account does not have Super Admin privileges.</div>
-            </motion.div>
-          )}
-          
-          <button 
-            onClick={handleLogin}
-            disabled={isLoggingOut}
-            className="glossy-button w-full flex items-center justify-center gap-4 text-xl py-4"
-          >
-            {isLoggingOut ? 'Clearing Session...' : 'Sign in with Google'}
-          </button>
-          
-          <div className="mt-12 pt-8 border-t border-gray-100/50 text-[10px] font-black uppercase tracking-widest text-gray-400 opacity-60 italic">
-            Strictly Restricted to Super Admins
-          </div>
+    <div className="min-h-screen flex items-center justify-center p-6 bg-terminal-bg fixed inset-0 font-mono text-terminal-fg">
+      <div className="terminal-card w-full max-w-lg p-8 relative overflow-hidden">
+        <div className="flex items-center gap-2 mb-8 border-b border-terminal-border pb-4">
+          <TerminalIcon className="w-6 h-6 text-terminal-accent" />
+          <h1 className="text-2xl font-bold tracking-tighter uppercase">Access Terminal</h1>
         </div>
-      </motion.div>
+
+        {error === 'unauthorized' && (
+          <div className="border border-red-500 bg-red-950/20 text-red-500 p-6 mb-8 flex flex-col gap-2">
+            <div className="flex items-center gap-2 font-bold uppercase">
+              <AlertCircle className="w-5 h-5" />
+              ACCESS_DENIED
+            </div>
+            <div className="text-xs font-mono">
+              SUPER_ADMIN_PRIVILEGE_REQUIRED
+            </div>
+          </div>
+        )}
+        
+        <div className="space-y-6">
+            <button 
+                onClick={handleLogin}
+                disabled={isLoggingOut}
+                className="terminal-button-accent w-full justify-center text-lg py-4 group"
+            >
+                <ShieldCheck className="w-6 h-6 group-hover:animate-pulse" />
+                {isLoggingOut ? '[ PROCESSING... ]' : '[ AUTHENTICATE_VIA_GOOGLE ]'}
+            </button>
+        </div>
+      </div>
     </div>
   )
 }
@@ -84,8 +94,8 @@ function LoginContent() {
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#f1f5f9]">
-        <div className="w-16 h-16 border-4 border-white/20 border-t-[#00b0f0] rounded-full animate-spin shadow-lg" />
+      <div className="min-h-screen flex items-center justify-center bg-terminal-bg font-mono">
+        <div className="text-terminal-green animate-pulse font-bold tracking-[0.5em]">SYSTEM_BOOTING...</div>
       </div>
     }>
       <LoginContent />

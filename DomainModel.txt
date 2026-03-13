@@ -1,0 +1,211 @@
+Domain Model (Supabase)
+
+
+This document describes the Crackd domain model implemented in Supabase PostgreSQL. The goal is to explain the conceptual model: what the important entities represent, how they relate, and how data typically flows through the system.
+
+
+Cracked is organized around four core ideas: people, images, captions, and generation logic. Around these sit supporting systems for community context, studies, moderation, analytics, and controlled access.
+
+
+How Students Should Use This Model:
+
+
+When building your applications, you should design your views around the core objects that users actually care about: images, captions, and people. Most features can be built by starting from one of these and following the relationships outward. When you want to understand why a caption exists or how it was generated, rely on the linked metadata (caption requests, prompt chains, humor flavors, and model responses) rather than making assumptions. That lineage is already captured for you. Finally, AI-related records are execution history there to explain a process behind a result, not to be regenerated in your app.
+
+
+If you understand this domain model, your application will feel like a natural extension of Crackd rather than a separate viewer layered on top of it!
+
+
+Access To Model
+
+
+All students have read-only access to Supabase. You should treat the database as an authoritative source of truth and design your applications to consume data rather than mutate it. Several tables are written by backend services (AI API, Matrix, Admin, etc.) and should be interpreted as logs of behavior.
+
+
+Profiles
+
+
+The profiles table is the central representation of a Crackd user. Each profile maps 1-to-1 with a Supabase auth.users record and stores application-level attributes rather than authentication credentials. Key conceptual fields includeL
+
+
+
+Name and email
+
+Boolean capability flags (is_superadmin, is_matrix_admin, is_in_study)
+
+Enablement state via is_enabled
+
+
+Almost every meaningful user action (uploading images, requesting captions, voting, saving, sharing) ultimately references profiles.id.
+
+
+Images
+
+
+Images are the foundational input to Crackd. Every caption, study, and generation request ultimately ties back to an image. An image record represents:
+
+
+
+A hosted visual asset (url)
+
+Ownership and visibility (profile_id, is_public)
+
+Cached semantic metadata (image_description, celebrity_recognition, and embedding)
+
+
+A critical design detail is that expensive AI-derived attributes are cached here. If the same image is reused across caption requests or studies, Cracked reuses the stored description and embeddings rather than recomputing them.
+
+
+The is_common_use flag and the related common_use_categories and common_use_category_image_mappings tables support curated image pools. These are used heavily in studies where consistency matters.
+
+
+Captions
+
+
+The captions table represents a single generated caption for an image. It is the core output artifact of Crackd. A caption ties together:
+
+
+
+The image it describes.
+
+The profile that owns or submitted it.
+
+Whether it is public, featured, or study-linked.
+
+The humor flavor and prompt chain that produced it.
+
+
+Captions are not just text. They are contextualized objects with lineage back to generation logic (llm_prompt_chain_id) and requests (caption_request_id).
+
+
+Caption Interaction Tables
+
+
+Crackd tracks engagement through several parallel tables:
+
+
+
+caption_likes: likes via almostcrackd.ai
+
+caption_votes: totaled up/down votes via slightlyhumorous.org
+
+caption_saved: personal bookmaking via almostcrackd.ai
+
+shares and share_to_destinations: distributions
+
+screenshots
+
+
+These tables are append-only behavioral logs.
+
+
+Moderation
+
+
+reported_captions and reported_images capture user-flagged content for review.
+
+
+Caption Requests
+
+
+caption_request represents a user initiating the generation process for an image. This table is the entry point to all AI activity. A single request may produce multiple prompt chains, multiple model responses, and multiple candidate captions.
+
+
+LLM Prompt Chains
+
+
+A prompt chain groups together a sequence of LLM steps executed for a request. Each chain is linked back to exactly one caption_request.
+
+
+LLM Model Responses
+
+
+llm_model_responses is a low-level execution log of every LLM call. It captures:
+
+
+
+The system and user prompts
+
+The model and provider used
+
+Processing time and temperature
+
+Which humor flavor step produced the response
+
+
+Students should think of this as trace data. It is important for debugging, evaluation, and research.
+
+
+Humor Flavors
+
+
+A humor_flavor is a named, reusable generation strategy for a particular comedic voice or structure. It is identifiable by a slug and description. Each humor flavor is broken down into ordered steps: humor_flavor_steps. A step defines:
+
+
+
+Which model to use
+
+Expected input and output types
+
+System and user prompts
+
+Temperature
+
+Its role in the reasoning chain
+
+
+This table is the backbone of The Matrix: Crackd’s prompt-engineering system.
+
+
+Additionally, humor_flavor_step_types classify steps. llm_models, llm_providers, llm_input_types, and llm_output_types normalize model metadata. humor_flavor_theme_mappings and humor_themes allow thematic grouping and analysis. Students building Matrix-like applications should treat these tables as configuration.
+
+
+Community Context
+
+
+communities represent bounded social groups. community_contexts store insider cultural knowledge such as events or shared experiences. Each content can optionally include embeddings for semantic retrieval. community_context_tags and community_context_tag_mappings allow contexts to be discoverable and filterable. Together, they form Crackd’s situational awareness layer.
+
+
+Studies
+
+
+Crackd is also a research platform. A study defines a bounded experiment with a start and end time. Important tables are:
+
+
+
+study_caption_mappings
+
+study_image_sets
+
+Study_image_set_image_mappings
+
+
+These tables associate images and captions with votes collected from Crackd’s internal testing platform. Students working on analysis will frequently query these relationships.
+
+
+Gen-Z & Style
+
+
+Several tables provide structured reference material:
+
+
+
+terms and term_types for Gen-Z vocabulary.
+
+news_snippets and news_entities for real-world grounding.
+
+personalities, transcripts, and transcript_personality_mappings for style and voice research.
+
+
+Invitations, Access Control, and Safety
+
+
+These are tables to support platform health:
+
+
+
+allowed_signup_domains restricts who may use the application.
+
+invitations manage controlled onboarding.
+
+bug_reports and testflight_errors capture operational feedback.

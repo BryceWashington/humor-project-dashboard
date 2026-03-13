@@ -2,15 +2,50 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, Image as ImageIcon, MessageSquare, LogOut } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { 
+  LayoutDashboard, Users, Image as ImageIcon, MessageSquare, LogOut, Terminal, 
+  Smile, ListTree, Zap, Book, HelpCircle, Cpu, Cloud, Link2, Activity,
+  Globe, Mail, FileText
+} from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 
-const menuItems = [
-  { href: '/', icon: LayoutDashboard, label: 'Dashboard' },
-  { href: '/users', icon: Users, label: 'Users' },
-  { href: '/images', icon: ImageIcon, label: 'Images' },
-  { href: '/captions', icon: MessageSquare, label: 'Captions' },
+const sections = [
+  {
+    label: 'CORE',
+    items: [
+      { href: '/', icon: LayoutDashboard, label: 'DASHBOARD' },
+      { href: '/users', icon: Users, label: 'USERS' },
+      { href: '/images', icon: ImageIcon, label: 'IMAGES' },
+      { href: '/captions', icon: MessageSquare, label: 'CAPTIONS' },
+      { href: '/caption-requests', icon: FileText, label: 'CAPTION_REQS' },
+    ]
+  },
+  {
+    label: 'HUMOR',
+    items: [
+      { href: '/humor-flavors', icon: Smile, label: 'FLAVORS' },
+      { href: '/humor-flavor-steps', icon: ListTree, label: 'STEPS' },
+      { href: '/humor-mix', icon: Zap, label: 'MIX' },
+      { href: '/terms', icon: Book, label: 'GEN-Z_TERMS' },
+      { href: '/caption-examples', icon: HelpCircle, label: 'EXAMPLES' },
+    ]
+  },
+  {
+    label: 'AI_SYSTEMS',
+    items: [
+      { href: '/llm-models', icon: Cpu, label: 'MODELS' },
+      { href: '/llm-providers', icon: Cloud, label: 'PROVIDERS' },
+      { href: '/llm-prompt-chains', icon: Link2, label: 'CHAINS' },
+      { href: '/llm-responses', icon: Activity, label: 'RESPONSES' },
+    ]
+  },
+  {
+    label: 'ACCESS',
+    items: [
+      { href: '/signup-domains', icon: Globe, label: 'DOMAINS' },
+      { href: '/whitelisted-emails', icon: Mail, label: 'WHITELIST' },
+    ]
+  }
 ]
 
 export default function Sidebar() {
@@ -23,48 +58,52 @@ export default function Sidebar() {
   }
 
   return (
-    <div className="w-64 h-screen p-6 sticky top-0 flex flex-col gap-6">
-      <motion.div 
-        initial={{ x: -20, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className="glass-card flex-1 flex flex-col p-4 gap-2 relative overflow-hidden"
-      >
-        {/* Glossy Header */}
-        <div className="p-4 mb-4 border-b border-white/20">
-          <h2 className="frutiger-text text-3xl tracking-tight">Admin</h2>
+    <div className="w-64 h-screen p-4 sticky top-0 flex flex-col gap-4 overflow-y-auto no-scrollbar">
+      <div className="terminal-card flex-1 flex flex-col p-4 gap-4">
+        {/* Terminal Header */}
+        <div className="flex items-center gap-2 mb-2">
+          <Terminal className="w-5 h-5 text-terminal-accent" />
+          <h2 className="text-xl font-bold tracking-tighter text-terminal-fg">SYSADM v1.0</h2>
         </div>
+        
+        <div className="border-b border-terminal-border mb-2" />
 
-        <nav className="flex-1 flex flex-col gap-1">
-          {menuItems.map((item) => {
-            const isActive = pathname === item.href
-            return (
-              <Link key={item.href} href={item.href}>
-                <div className={`
-                  flex items-center gap-3 px-5 py-4 rounded-2xl transition-all
-                  ${isActive 
-                    ? 'bg-white/40 text-blue-900 font-bold shadow-inner' 
-                    : 'text-white/80 hover:bg-white/20 hover:text-white font-medium'
-                  }
-                `}>
-                  <item.icon className={`w-5 h-5 ${isActive ? 'text-blue-600' : ''}`} />
-                  {item.label}
-                </div>
-              </Link>
-            )
-          })}
+        <nav className="flex-1 flex flex-col gap-6">
+          {sections.map((section) => (
+            <div key={section.label} className="space-y-1">
+              <div className="text-[10px] font-black text-terminal-dim tracking-[0.2em] px-3 mb-2">{section.label}</div>
+              {section.items.map((item) => {
+                const isActive = pathname === item.href
+                return (
+                  <Link key={item.href} href={item.href}>
+                    <div className={`
+                      flex items-center gap-3 px-3 py-1.5 transition-all
+                      ${isActive 
+                        ? 'bg-terminal-fg text-terminal-bg font-bold' 
+                        : 'text-terminal-dim hover:text-terminal-fg hover:bg-white/[0.03]'
+                      }
+                    `}>
+                      <span className="text-[8px] w-2">{isActive ? '>' : ' '}</span>
+                      <item.icon className={`w-3.5 h-3.5 ${isActive ? '' : 'opacity-50'}`} />
+                      <span className="text-[10px] font-mono tracking-widest">{item.label}</span>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          ))}
         </nav>
 
-        <button 
-          onClick={handleLogout}
-          className="mt-auto flex items-center gap-3 px-5 py-4 rounded-2xl text-white/70 hover:bg-white/10 transition-all hover:text-red-200 font-bold"
-        >
-          <LogOut className="w-5 h-5" />
-          Logout
-        </button>
-
-        {/* Ambient Bubbles */}
-        <div className="absolute -bottom-10 -left-10 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none" />
-      </motion.div>
+        <div className="border-t border-terminal-border pt-4 mt-auto">
+          <button 
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-3 py-2 text-terminal-dim hover:text-red-500 transition-all font-bold text-[10px] font-mono"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+            [ LOGOUT ]
+          </button>
+        </div>
+      </div>
     </div>
   )
 }

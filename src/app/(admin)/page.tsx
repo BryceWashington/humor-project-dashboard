@@ -1,8 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { motion } from 'framer-motion'
-import { Activity, Users, ImageIcon, MessageSquare } from 'lucide-react'
+import { Activity, Users, ImageIcon, MessageSquare, Database, Cpu } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import {
   Tooltip,
@@ -15,23 +14,20 @@ import {
 } from 'recharts'
 
 const StatCard = ({ icon: Icon, label, value, loading }: any) => (
-  <motion.div 
-    whileHover={{ y: -5 }}
-    className="glass-card p-8 flex flex-col gap-4 relative overflow-hidden"
-  >
-    <div className="flex justify-between items-start relative z-10">
-      <div className={`p-4 rounded-3xl bg-white/60 border border-white text-blue-900 shadow-sm`}>
-        <Icon className="w-8 h-8" />
+  <div className="terminal-card flex flex-col gap-2">
+    <div className="flex justify-between items-center mb-2">
+      <div className="terminal-header flex items-center gap-1">
+        <Icon className="w-3 h-3" />
+        {label}
       </div>
     </div>
-    <div className="relative z-10">
-      <p className="text-blue-900 font-black tracking-widest uppercase text-[10px] opacity-70 italic">{label}</p>
-      <p className="text-4xl font-black text-blue-950 tracking-tighter mt-1">
-        {loading ? '...' : value}
-      </p>
+    <div className="text-3xl font-bold font-mono tracking-widest text-terminal-fg">
+      {loading ? '[ SYNCING... ]' : value}
     </div>
-    <div className="absolute top-0 right-0 w-24 h-24 bg-white/20 rotate-45 translate-x-12 -translate-y-12 blur-2xl pointer-events-none" />
-  </motion.div>
+    <div className="mt-2 h-[1px] bg-terminal-border w-full">
+        {!loading && <div className="h-full bg-terminal-accent w-3/4" />}
+    </div>
+  </div>
 )
 
 export default function Dashboard() {
@@ -41,8 +37,10 @@ export default function Dashboard() {
   const [heatmap, setHeatmap] = useState<{date: string, value: number}[]>([])
   const [leaderboard, setLeaderboard] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     async function fetchData() {
       setLoading(true)
       
@@ -138,101 +136,120 @@ export default function Dashboard() {
   }, [supabase])
 
   return (
-    <div className="space-y-10 animate-in fade-in duration-1000 pb-10">
-      <header className="flex flex-col gap-1">
-        <h1 className="text-5xl frutiger-text">Dashboard</h1>
+    <div className="space-y-6 pb-10 font-mono text-terminal-fg">
+      <header className="flex justify-between items-end border-b border-terminal-border pb-4">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <Cpu className="w-4 h-4 text-terminal-accent" />
+            <span className="text-[10px] uppercase font-bold text-terminal-dim">System Monitor</span>
+          </div>
+          <h1 className="text-4xl font-bold tracking-tighter text-terminal-fg uppercase">Dashboard Summary</h1>
+        </div>
+        <div className="text-right">
+            <p className="text-xs text-terminal-dim">TIME: {mounted ? new Date().toISOString() : '[ CONNECTING... ]'}</p>
+        </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <StatCard icon={Users} label="Total Users" value={stats.users.toLocaleString()} loading={loading} />
-        <StatCard icon={ImageIcon} label="Images" value={stats.images.toLocaleString()} loading={loading} />
-        <StatCard icon={MessageSquare} label="Captions" value={stats.captions.toLocaleString()} loading={loading} />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <StatCard icon={Users} label="DATABASE_USERS" value={stats.users.toLocaleString()} loading={loading} />
+        <StatCard icon={ImageIcon} label="IMAGE_ASSETS" value={stats.images.toLocaleString()} loading={loading} />
+        <StatCard icon={MessageSquare} label="CAPTION_RECORDS" value={stats.captions.toLocaleString()} loading={loading} />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="glass-card p-10 lg:col-span-2 flex flex-col min-h-[450px]">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="p-3 bg-white/60 rounded-2xl text-blue-900 border border-white shadow-sm"><Activity className="w-6 h-6" /></div>
-            <h2 className="frutiger-text text-3xl">30-Day Growth</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="terminal-card lg:col-span-2 flex flex-col min-h-[400px]">
+          <div className="flex items-center justify-between mb-6">
+            <div className="terminal-header flex items-center gap-2">
+              <Activity className="w-4 h-4" />
+              SYSTEM_GROWTH_TIMELINE
+            </div>
           </div>
-          <div className="flex-1 w-full">
+          <div className="flex-1 w-full bg-black/40 border border-terminal-border/50 p-2">
             {loading ? (
-              <div className="h-full flex items-center justify-center text-blue-900/50 font-black tracking-widest uppercase text-xs animate-pulse">Syncing...</div>
+              <div className="h-full flex items-center justify-center text-terminal-dim text-xs animate-pulse font-bold tracking-widest">[ SYNCING DATA STREAM... ]</div>
             ) : (
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={timelineData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(0,0,0,0.05)" />
-                  <XAxis dataKey="shortDate" axisLine={false} tickLine={false} tick={{ fill: '#1e3a8a', fontSize: 10, fontWeight: 900 }} dy={10} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#1e3a8a', fontSize: 10, fontWeight: 900 }} dx={-10} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272a" />
+                  <XAxis dataKey="shortDate" axisLine={{ stroke: '#27272a' }} tickLine={false} tick={{ fill: '#71717a', fontSize: 10 }} dy={10} />
+                  <YAxis axisLine={{ stroke: '#27272a' }} tickLine={false} tick={{ fill: '#71717a', fontSize: 10 }} dx={-10} />
                   <Tooltip 
-                    contentStyle={{ backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid white', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}
-                    itemStyle={{ fontWeight: 900, fontSize: '12px', color: '#1e3a8a' }}
+                    contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #27272a', color: '#f4f4f5', fontFamily: 'monospace' }}
+                    itemStyle={{ color: '#00ff41' }}
                   />
-                  <Line type="monotone" dataKey="users" stroke="#00AEEF" strokeWidth={6} dot={false} activeDot={{ r: 8, fill: '#00AEEF', stroke: 'white', strokeWidth: 4 }} />
-                  <Line type="monotone" dataKey="images" stroke="#8DC63F" strokeWidth={6} dot={false} activeDot={{ r: 8, fill: '#8DC63F', stroke: 'white', strokeWidth: 4 }} />
-                  <Line type="monotone" dataKey="captions" stroke="#00B2B2" strokeWidth={6} dot={false} activeDot={{ r: 8, fill: '#00B2B2', stroke: 'white', strokeWidth: 4 }} />
+                  <Line type="step" dataKey="users" stroke="#00ff41" strokeWidth={1} dot={false} />
+                  <Line type="step" dataKey="images" stroke="#f4f4f5" strokeWidth={1} dot={false} />
+                  <Line type="step" dataKey="captions" stroke="#71717a" strokeWidth={1} dot={false} strokeDasharray="3 3" />
                 </LineChart>
               </ResponsiveContainer>
             )}
           </div>
         </div>
 
-        <div className="glass-card p-10 flex flex-col min-h-[450px]">
-          <h2 className="frutiger-text text-2xl mb-2 text-blue-950">Caption Heatmap</h2>
-          <div className="flex-1 flex items-center justify-center mt-4">
+        <div className="terminal-card flex flex-col min-h-[400px]">
+          <div className="terminal-header mb-4">CAPTION_ACTIVITY_GRID</div>
+          <div className="flex-1 flex flex-col items-center justify-center gap-4">
             {loading ? (
-               <div className="text-blue-900/50 font-black tracking-widest uppercase text-xs animate-pulse">Loading...</div>
+               <div className="text-terminal-dim text-xs animate-pulse font-bold">[ LOADING_GRID ]</div>
             ) : (
-              <div className="grid grid-cols-5 gap-4 w-full">
-                {heatmap.map((d) => (
-                  <div key={d.date} className="relative group aspect-square">
-                    <motion.div 
-                      className="w-full h-full rounded-2xl transition-all border border-white shadow-sm"
-                      style={{ 
-                        backgroundColor: d.value === 0 ? 'rgba(255,255,255,0.2)' : `rgba(0, 174, 239, ${Math.min(1, 0.2 + (d.value / 8))})`,
-                      }}
-                    />
-                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 px-4 py-2 bg-blue-950 text-white text-[10px] font-black rounded-xl opacity-0 group-hover:opacity-100 transition-all pointer-events-none whitespace-nowrap z-10 shadow-2xl">
-                      {d.date}: {d.value} captions
+              <>
+                <div className="grid grid-cols-5 gap-2 w-full">
+                  {heatmap.map((d) => (
+                    <div key={d.date} className="relative group aspect-square">
+                      <div 
+                        className="w-full h-full border border-terminal-border/40 transition-all"
+                        style={{ 
+                          backgroundColor: d.value === 0 ? 'transparent' : `rgba(0, 255, 65, ${Math.min(1, 0.2 + (d.value / 8))})`,
+                        }}
+                      />
+                      <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-terminal-fg text-terminal-bg text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-20 border border-terminal-bg">
+                        [{d.date}] :: {d.value} CAPS
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+                <div className="w-full text-[10px] text-terminal-dim border-t border-terminal-border pt-4 font-mono">
+                  LEGEND: MIN (DARK) - MAX (ACCENT)
+                </div>
+              </>
             )}
           </div>
         </div>
       </div>
 
-      <div className="glass-card p-10">
-        <h2 className="frutiger-text text-3xl mb-8">Activity Leaderboard</h2>
+      <div className="terminal-card">
+        <div className="flex items-center justify-between mb-6">
+            <div className="terminal-header flex items-center gap-2">
+                <Database className="w-4 h-4" />
+                USER_ENGAGEMENT_RANKINGS
+            </div>
+        </div>
         <div className="overflow-x-auto">
-          <table className="w-full text-left">
+          <table className="terminal-table">
             <thead>
-              <tr className="text-blue-900/60 border-b border-blue-900/10 text-[10px] font-black uppercase tracking-[0.3em] italic">
-                <th className="pb-6 px-6">Administrator / User</th>
-                <th className="pb-6 text-right px-6">Image Contributions</th>
-                <th className="pb-6 text-right px-6">Caption Records</th>
-                <th className="pb-6 text-right px-6">Weighted Score</th>
+              <tr>
+                <th>IDENTIFIER / USER_ID</th>
+                <th className="text-right">IMG_COUNT</th>
+                <th className="text-right">CAP_COUNT</th>
+                <th className="text-right">W_SCORE</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-blue-900/5">
+            <tbody>
               {loading ? (
-                <tr><td colSpan={4} className="py-12 text-center text-blue-900/50 font-black tracking-widest uppercase text-xs animate-pulse">Fetching Rankings...</td></tr>
+                <tr><td colSpan={4} className="py-8 text-center text-terminal-dim animate-pulse">[ FETCHING_RANKINGS ]</td></tr>
               ) : leaderboard.length > 0 ? (
                 leaderboard.map((row) => (
-                  <tr key={row.id} className="text-blue-950 hover:bg-white/30 transition-colors group">
-                    <td className="py-6 px-6 font-black tracking-tight group-hover:text-blue-600">{row.user}</td>
-                    <td className="py-6 text-right px-6 font-mono font-black text-blue-900/70">{row.images}</td>
-                    <td className="py-6 text-right px-6 font-mono font-black text-blue-900/70">{row.captions}</td>
-                    <td className="py-6 text-right px-6">
-                      <span className="bg-white/60 text-blue-900 px-6 py-2.5 rounded-full text-xs font-black border border-white shadow-sm group-hover:shadow-md transition-all">
-                        {row.images * 10 + row.captions}
-                      </span>
+                  <tr key={row.id}>
+                    <td className="font-bold tracking-tight text-terminal-fg">{row.user}</td>
+                    <td className="text-right text-terminal-dim">{row.images}</td>
+                    <td className="text-right text-terminal-dim">{row.captions}</td>
+                    <td className="text-right font-bold text-terminal-accent">
+                        {(row.images * 10 + row.captions).toFixed(2)}
                     </td>
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={4} className="py-12 text-center text-blue-900/50 italic font-black uppercase tracking-widest text-xs">Data not available.</td></tr>
+                <tr><td colSpan={4} className="py-8 text-center text-terminal-dim">[ NO_DATA_AVAILABLE ]</td></tr>
               )}
             </tbody>
           </table>

@@ -5,8 +5,8 @@ import "./globals.css"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Humor Project Admin Dashboard",
-  description: "Frutiger Aero Admin Dashboard",
+  title: "SYSADM | Humor Project Dashboard",
+  description: "Secure Terminal Administration Interface",
 }
 
 export default function RootLayout({
@@ -17,6 +17,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={inter.className}>
+        <div className="scanline" />
+        <div className="crt-overlay" />
         {children}
       </body>
     </html>
