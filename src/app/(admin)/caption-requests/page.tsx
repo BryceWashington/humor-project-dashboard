@@ -12,6 +12,8 @@ const PAGE_SIZE = 10
 interface CaptionRequestWithJoins extends CaptionRequest {
   profiles: { first_name: string | null; last_name: string | null; email: string | null } | null
   images: { id: string; url: string | null } | null
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
 }
 
 function CaptionRequestsContent() {
@@ -30,7 +32,7 @@ function CaptionRequestsContent() {
       setLoading(true)
       let query = supabase
         .from('caption_requests')
-        .select('*, profiles(first_name, last_name, email), images(id, url)', { count: 'exact' })
+        .select('*, profiles!profile_id(first_name, last_name, email), images(id, url), creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
       
       if (idFilter) {
         query = query.eq('id', idFilter)
@@ -162,6 +164,33 @@ function CaptionRequestsContent() {
                     <p className="text-xs text-terminal-fg font-mono uppercase bg-terminal-header p-3 border border-terminal-border">
                       {new Date(selectedDetail.created_datetime_utc).toString()}
                     </p>
+                  </div>
+
+                  <div className="space-y-4 pt-4 border-t border-terminal-border">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                        <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                        <Link href={`/users?id=${selectedDetail.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                          {selectedDetail.creator ? `${selectedDetail.creator.first_name || ''} ${selectedDetail.creator.last_name || ''}`.trim() || selectedDetail.creator.email : selectedDetail.created_by_user_id}
+                        </Link>
+                      </div>
+                      <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                        <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                        <Link href={`/users?id=${selectedDetail.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                          {selectedDetail.modifier ? `${selectedDetail.modifier.first_name || ''} ${selectedDetail.modifier.last_name || ''}`.trim() || selectedDetail.modifier.email : selectedDetail.modified_by_user_id}
+                        </Link>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                        <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                        <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.created_datetime_utc).toLocaleString()}</p>
+                      </div>
+                      <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                        <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                        <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.modified_datetime_utc).toLocaleString()}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

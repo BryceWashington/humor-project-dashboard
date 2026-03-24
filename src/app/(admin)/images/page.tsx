@@ -11,6 +11,8 @@ const PAGE_SIZE = 10
 
 interface ImageWithProfile extends DBImage {
   profiles: { first_name: string | null; last_name: string | null; email: string | null } | null
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
 }
 
 function ImagesContent() {
@@ -35,7 +37,7 @@ function ImagesContent() {
 
   const fetchImages = async () => {
     setLoading(true)
-    let query = supabase.from('images').select('*, profiles(first_name, last_name, email)', { count: 'exact' })
+    let query = supabase.from('images').select('*, profiles!profile_id(first_name, last_name, email), creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
     
     if (imageIdFilter) {
       query = query.eq('id', imageIdFilter)
@@ -116,18 +118,23 @@ function ImagesContent() {
         targetImageId = imageId
       }
 
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) throw new Error('AUTH_ERROR: NO_USER_DETECTED')
+
       if (targetImageId) {
         await (supabase.from('images') as any).update({ 
           url: imageUrl, 
-          image_description: formData.image_description 
+          image_description: formData.image_description,
+          modified_by_user_id: user.id
         }).eq('id', targetImageId)
       } else {
-        const { data: { user } } = await supabase.auth.getUser()
         await (supabase.from('images') as any).insert({ 
           url: imageUrl, 
           image_description: formData.image_description, 
           is_public: true, 
-          profile_id: user?.id 
+          profile_id: user.id,
+          created_by_user_id: user.id,
+          modified_by_user_id: user.id
         })
       }
       
@@ -259,6 +266,33 @@ function ImagesContent() {
                             [ VIEW_SOURCE ] <ExternalLink className="w-3 h-3 ml-2" />
                            </a>
                        </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-3 pt-4 border-t border-terminal-border">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                        <Link href={`/users?id=${selectedImage.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                          {selectedImage.creator ? `${selectedImage.creator.first_name || ''} ${selectedImage.creator.last_name || ''}`.trim() || selectedImage.creator.email : selectedImage.created_by_user_id}
+                        </Link>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                        <Link href={`/users?id=${selectedImage.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                          {selectedImage.modifier ? `${selectedImage.modifier.first_name || ''} ${selectedImage.modifier.last_name || ''}`.trim() || selectedImage.modifier.email : selectedImage.modified_by_user_id}
+                        </Link>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                        <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedImage.created_datetime_utc).toLocaleString()}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                        <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedImage.modified_datetime_utc).toLocaleString()}</p>
+                      </div>
                     </div>
                   </div>
                 </div>

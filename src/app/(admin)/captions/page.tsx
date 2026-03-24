@@ -13,6 +13,8 @@ const PAGE_SIZE = 10
 interface CaptionWithJoins extends Caption {
   profiles: { first_name: string | null; last_name: string | null; email: string | null } | null
   images: { id: string; url: string | null; image_description: string | null } | null
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
 }
 
 function CaptionsContent() {
@@ -32,7 +34,7 @@ function CaptionsContent() {
     setLoading(true)
     let query = supabase
       .from('captions')
-      .select('*, profiles(first_name, last_name, email), images(id, url, image_description)', { count: 'exact' })
+      .select('*, profiles!profile_id(first_name, last_name, email), images(id, url, image_description), creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
     
     if (captionIdFilter) {
       query = query.eq('id', captionIdFilter)
@@ -162,6 +164,33 @@ function CaptionsContent() {
                   <div className="border border-terminal-border p-4 bg-terminal-header space-y-1">
                     <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">SYSTEM_STATUS</p>
                     {selectedCaption.is_featured ? <p className="font-bold text-terminal-accent text-xs uppercase tracking-widest">[ FEATURED ]</p> : <p className="font-bold text-terminal-dim uppercase text-[10px] tracking-widest">Standard</p>}
+                  </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-terminal-border">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                      <Link href={`/users?id=${selectedCaption.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedCaption.creator ? `${selectedCaption.creator.first_name || ''} ${selectedCaption.creator.last_name || ''}`.trim() || selectedCaption.creator.email : selectedCaption.created_by_user_id}
+                      </Link>
+                    </div>
+                    <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                      <Link href={`/users?id=${selectedCaption.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedCaption.modifier ? `${selectedCaption.modifier.first_name || ''} ${selectedCaption.modifier.last_name || ''}`.trim() || selectedCaption.modifier.email : selectedCaption.modified_by_user_id}
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedCaption.created_datetime_utc).toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedCaption.modified_datetime_utc).toLocaleString()}</p>
+                    </div>
                   </div>
                 </div>
               </div>

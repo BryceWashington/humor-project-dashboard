@@ -5,15 +5,21 @@ import { Globe, Search, PlusCircle, ChevronLeft, ChevronRight, X } from 'lucide-
 import { createClient } from '@/utils/supabase/client'
 import { AllowedSignupDomain } from '@/types/database'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 const PAGE_SIZE = 10
+
+interface AllowedSignupDomainWithProfiles extends AllowedSignupDomain {
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
+}
 
 function SignupDomainsContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const idFilter = searchParams.get('id')
 
-  const [data, setData] = useState<AllowedSignupDomain[]>([])
+  const [data, setData] = useState<AllowedSignupDomainWithProfiles[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
@@ -21,13 +27,13 @@ function SignupDomainsContent() {
   
   const [isAdding, setIsAdding] = useState(false)
   const [editingItem, setEditingItem] = useState<AllowedSignupDomain | null>(null)
-  const [selectedDetail, setSelectedDetail] = useState<AllowedSignupDomain | null>(null)
+  const [selectedDetail, setSelectedDetail] = useState<AllowedSignupDomainWithProfiles | null>(null)
   const [formData, setFormData] = useState({ apex_domain: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const fetchData = async () => {
     setLoading(true)
-    let query = supabase.from('allowed_signup_domains').select('*', { count: 'exact' })
+    let query = supabase.from('allowed_signup_domains').select('*, creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
     
     if (idFilter) {
       query = query.eq('id', idFilter)
@@ -39,12 +45,12 @@ function SignupDomainsContent() {
       .order('apex_domain', { ascending: true })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
     
-    setData(data || [])
+    setData(data as any || [])
     setTotalCount(count || 0)
     setLoading(false)
 
     if (idFilter && data?.[0]) {
-      setSelectedDetail(data[0])
+      setSelectedDetail(data[0] as any)
     }
   }
 
@@ -56,10 +62,26 @@ function SignupDomainsContent() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      alert('AUTH_ERROR: NO_USER_DETECTED')
+      setIsSubmitting(false)
+      return
+    }
+
+    const payload = {
+      ...formData,
+      modified_by_user_id: user.id,
+    }
+
     if (editingItem) {
-      await (supabase.from('allowed_signup_domains') as any).update(formData).eq('id', editingItem.id)
+      await (supabase.from('allowed_signup_domains') as any).update(payload).eq('id', editingItem.id)
     } else {
-      await (supabase.from('allowed_signup_domains') as any).insert(formData)
+      await (supabase.from('allowed_signup_domains') as any).insert({
+        ...payload,
+        created_by_user_id: user.id,
+      })
     }
     setIsSubmitting(false); setIsAdding(false); setEditingItem(null);
     setFormData({ apex_domain: '' }); fetchData();
@@ -166,6 +188,33 @@ function SignupDomainsContent() {
                 <div className="space-y-1">
                   <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">DATABASE_ID</p>
                   <p className="text-[10px] font-mono text-terminal-dim">{selectedDetail.id}</p>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-terminal-border">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.creator ? `${selectedDetail.creator.first_name || ''} ${selectedDetail.creator.last_name || ''}`.trim() || selectedDetail.creator.email : selectedDetail.created_by_user_id}
+                      </Link>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.modifier ? `${selectedDetail.modifier.first_name || ''} ${selectedDetail.modifier.last_name || ''}`.trim() || selectedDetail.modifier.email : selectedDetail.modified_by_user_id}
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.created_datetime_utc).toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.modified_datetime_utc).toLocaleString()}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

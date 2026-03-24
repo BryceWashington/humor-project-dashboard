@@ -12,6 +12,8 @@ const PAGE_SIZE = 10
 interface HumorFlavorStepWithJoins extends HumorFlavorStep {
   humor_flavors: { id: number; slug: string } | null
   llm_models: { id: number; name: string } | null
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
 }
 
 function HumorFlavorStepsContent() {
@@ -30,7 +32,7 @@ function HumorFlavorStepsContent() {
       setLoading(true)
       let query = supabase
         .from('humor_flavor_steps')
-        .select('*, humor_flavors(id, slug), llm_models(id, name)', { count: 'exact' })
+        .select('*, humor_flavors(id, slug), llm_models(id, name), creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
       
       if (idFilter) {
         query = query.eq('id', idFilter)
@@ -161,6 +163,33 @@ function HumorFlavorStepsContent() {
                 <div className="border border-terminal-border bg-terminal-header">
                   <div className="bg-terminal-border/20 px-4 py-1 text-[8px] font-bold text-terminal-dim uppercase tracking-widest">USER_PROMPT</div>
                   <pre className="p-4 text-[10px] whitespace-pre-wrap text-terminal-fg leading-relaxed bg-black/20 font-mono">{selectedDetail.llm_user_prompt || 'NULL'}</pre>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-terminal-border">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.creator ? `${selectedDetail.creator.first_name || ''} ${selectedDetail.creator.last_name || ''}`.trim() || selectedDetail.creator.email : selectedDetail.created_by_user_id}
+                      </Link>
+                    </div>
+                    <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.modifier ? `${selectedDetail.modifier.first_name || ''} ${selectedDetail.modifier.last_name || ''}`.trim() || selectedDetail.modifier.email : selectedDetail.modified_by_user_id}
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.created_datetime_utc).toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.modified_datetime_utc).toLocaleString()}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -5,26 +5,32 @@ import { Users, Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { Profile } from '@/types/database'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 const PAGE_SIZE = 10
+
+interface ProfileWithAudit extends Profile {
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
+}
 
 function UsersContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const userIdFilter = searchParams.get('id')
 
-  const [users, setUsers] = useState<Profile[]>([])
+  const [users, setUsers] = useState<ProfileWithAudit[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
   
-  const [selectedUser, setSelectedUser] = useState<Profile | null>(null)
+  const [selectedUser, setSelectedUser] = useState<ProfileWithAudit | null>(null)
 
   useEffect(() => {
     async function fetchUsers() {
       setLoading(true)
-      let query = supabase.from('profiles').select('*', { count: 'exact' })
+      let query = supabase.from('profiles').select('*, creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
       
       if (userIdFilter) {
         query = query.eq('id', userIdFilter)
@@ -36,12 +42,12 @@ function UsersContent() {
         .order('created_datetime_utc', { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
       
-      setUsers(data || [])
+      setUsers(data as any || [])
       setTotalCount(count || 0)
       setLoading(false)
 
       if (userIdFilter && data?.[0]) {
-        setSelectedUser(data[0])
+        setSelectedUser(data[0] as any)
       }
     }
     const timer = setTimeout(() => { fetchUsers() }, 300)
@@ -183,6 +189,33 @@ function UsersContent() {
                 <div className="border border-terminal-border p-4 bg-terminal-header space-y-2">
                   <p className="text-[10px] font-bold text-terminal-dim uppercase tracking-widest">REGISTRATION</p>
                   <p className="font-bold text-xs text-terminal-fg uppercase"> {new Date(selectedUser.created_datetime_utc).toLocaleString()} </p>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-terminal-border">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                    <Link href={`/users?id=${selectedUser.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                      {selectedUser.creator ? `${selectedUser.creator.first_name || ''} ${selectedUser.creator.last_name || ''}`.trim() || selectedUser.creator.email : selectedUser.created_by_user_id}
+                    </Link>
+                  </div>
+                  <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                    <Link href={`/users?id=${selectedUser.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                      {selectedUser.modifier ? `${selectedUser.modifier.first_name || ''} ${selectedUser.modifier.last_name || ''}`.trim() || selectedUser.modifier.email : selectedUser.modified_by_user_id}
+                    </Link>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                    <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedUser.created_datetime_utc).toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                    <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedUser.modified_datetime_utc).toLocaleString()}</p>
+                  </div>
                 </div>
               </div>
 

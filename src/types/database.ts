@@ -1,7 +1,9 @@
 export interface Profile {
   id: string
   created_datetime_utc: string
-  modified_datetime_utc?: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   first_name?: string
   last_name?: string
   email?: string
@@ -13,7 +15,9 @@ export interface Profile {
 export interface Image {
   id: string
   created_datetime_utc: string
-  modified_datetime_utc?: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   url?: string
   profile_id?: string
   image_description?: string
@@ -24,7 +28,9 @@ export interface Image {
 export interface Caption {
   id: string
   created_datetime_utc: string
-  modified_datetime_utc?: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   content?: string
   is_public: boolean
   profile_id: string
@@ -39,6 +45,9 @@ export interface Caption {
 export interface HumorFlavor {
   id: number
   created_datetime_utc: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   description?: string
   slug: string
 }
@@ -46,6 +55,9 @@ export interface HumorFlavor {
 export interface HumorFlavorStep {
   id: number
   created_datetime_utc: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   humor_flavor_id: number
   llm_temperature?: number
   order_by: number
@@ -61,6 +73,9 @@ export interface HumorFlavorStep {
 export interface HumorFlavorMix {
   id: number
   created_datetime_utc: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   humor_flavor_id: number
   caption_count: number
 }
@@ -68,7 +83,9 @@ export interface HumorFlavorMix {
 export interface Term {
   id: number
   created_datetime_utc: string
-  modified_datetime_utc?: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   term: string
   definition: string
   example: string
@@ -79,6 +96,9 @@ export interface Term {
 export interface CaptionRequest {
   id: number
   created_datetime_utc: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   profile_id: string
   image_id: string
 }
@@ -86,7 +106,9 @@ export interface CaptionRequest {
 export interface CaptionExample {
   id: number
   created_datetime_utc: string
-  modified_datetime_utc?: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   image_description: string
   caption: string
   explanation: string
@@ -97,6 +119,9 @@ export interface CaptionExample {
 export interface LLMModel {
   id: number
   created_datetime_utc: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   name: string
   llm_provider_id: number
   provider_model_id: string
@@ -106,18 +131,27 @@ export interface LLMModel {
 export interface LLMProvider {
   id: number
   created_datetime_utc: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   name: string
 }
 
 export interface LLMPromptChain {
   id: number
   created_datetime_utc: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   caption_request_id: number
 }
 
 export interface LLMModelResponse {
   id: string
   created_datetime_utc: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   llm_model_response?: string
   processing_time_seconds: number
   llm_model_id: number
@@ -134,13 +168,18 @@ export interface LLMModelResponse {
 export interface AllowedSignupDomain {
   id: number
   created_datetime_utc: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   apex_domain: string
 }
 
 export interface WhitelistEmailAddress {
   id: number
   created_datetime_utc: string
-  modified_datetime_utc?: string
+  modified_datetime_utc: string
+  created_by_user_id: string
+  modified_by_user_id: string
   email_address: string
 }
 
@@ -149,78 +188,78 @@ export type Database = {
     Tables: {
       profiles: {
         Row: Profile
-        Insert: Omit<Profile, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<Profile, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<Profile, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<Profile, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       images: {
         Row: Image
-        Insert: Omit<Image, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<Image, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<Image, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<Image, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       captions: {
         Row: Caption
-        Insert: Omit<Caption, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<Caption, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<Caption, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<Caption, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       humor_flavors: {
         Row: HumorFlavor
-        Insert: Omit<HumorFlavor, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<HumorFlavor, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<HumorFlavor, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<HumorFlavor, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       humor_flavor_steps: {
         Row: HumorFlavorStep
-        Insert: Omit<HumorFlavorStep, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<HumorFlavorStep, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<HumorFlavorStep, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<HumorFlavorStep, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       humor_flavor_mix: {
         Row: HumorFlavorMix
-        Insert: Omit<HumorFlavorMix, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<HumorFlavorMix, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<HumorFlavorMix, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<HumorFlavorMix, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       terms: {
         Row: Term
-        Insert: Omit<Term, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<Term, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<Term, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<Term, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       caption_requests: {
         Row: CaptionRequest
-        Insert: Omit<CaptionRequest, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<CaptionRequest, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<CaptionRequest, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<CaptionRequest, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       caption_examples: {
         Row: CaptionExample
-        Insert: Omit<CaptionExample, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<CaptionExample, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<CaptionExample, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<CaptionExample, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       llm_models: {
         Row: LLMModel
-        Insert: Omit<LLMModel, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<LLMModel, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<LLMModel, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<LLMModel, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       llm_providers: {
         Row: LLMProvider
-        Insert: Omit<LLMProvider, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<LLMProvider, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<LLMProvider, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<LLMProvider, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       llm_prompt_chains: {
         Row: LLMPromptChain
-        Insert: Omit<LLMPromptChain, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<LLMPromptChain, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<LLMPromptChain, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<LLMPromptChain, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       llm_model_responses: {
         Row: LLMModelResponse
-        Insert: Omit<LLMModelResponse, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<LLMModelResponse, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<LLMModelResponse, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<LLMModelResponse, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       allowed_signup_domains: {
         Row: AllowedSignupDomain
-        Insert: Omit<AllowedSignupDomain, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<AllowedSignupDomain, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<AllowedSignupDomain, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<AllowedSignupDomain, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
       whitelist_email_addresses: {
         Row: WhitelistEmailAddress
-        Insert: Omit<WhitelistEmailAddress, 'id' | 'created_datetime_utc'>
-        Update: Partial<Omit<WhitelistEmailAddress, 'id' | 'created_datetime_utc'>>
+        Insert: Omit<WhitelistEmailAddress, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>
+        Update: Partial<Omit<WhitelistEmailAddress, 'id' | 'created_datetime_utc' | 'modified_datetime_utc'>>
       }
     }
   }

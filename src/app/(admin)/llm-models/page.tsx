@@ -11,6 +11,8 @@ const PAGE_SIZE = 10
 
 interface LLMModelWithProvider extends LLMModel {
   llm_providers: { id: number; name: string } | null
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
 }
 
 function LLMModelsContent() {
@@ -33,7 +35,7 @@ function LLMModelsContent() {
 
   const fetchData = async () => {
     setLoading(true)
-    let query = supabase.from('llm_models').select('*, llm_providers(id, name)', { count: 'exact' })
+    let query = supabase.from('llm_models').select('*, llm_providers(id, name), creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
     
     if (idFilter) {
       query = query.eq('id', idFilter)
@@ -62,10 +64,26 @@ function LLMModelsContent() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      alert('AUTH_ERROR: NO_USER_DETECTED')
+      setIsSubmitting(false)
+      return
+    }
+
+    const payload = {
+      ...formData,
+      modified_by_user_id: user.id,
+    }
+
     if (editingItem) {
-      await (supabase.from('llm_models') as any).update(formData).eq('id', editingItem.id)
+      await (supabase.from('llm_models') as any).update(payload).eq('id', editingItem.id)
     } else {
-      await (supabase.from('llm_models') as any).insert(formData)
+      await (supabase.from('llm_models') as any).insert({
+        ...payload,
+        created_by_user_id: user.id,
+      })
     }
     setIsSubmitting(false); setIsAdding(false); setEditingItem(null);
     setFormData({ name: '', llm_provider_id: providers[0]?.id || 0, provider_model_id: '', is_temperature_supported: false }); fetchData();
@@ -191,6 +209,33 @@ function LLMModelsContent() {
               <div className="space-y-1">
                 <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">EXTERNAL_MODEL_ID_STRING</p>
                 <p className="text-sm text-terminal-fg font-mono border border-terminal-border p-4 bg-terminal-header">{selectedDetail.provider_model_id}</p>
+              </div>
+
+              <div className="space-y-3 pt-4 border-t border-terminal-border">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                    <Link href={`/users?id=${selectedDetail.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                      {selectedDetail.creator ? `${selectedDetail.creator.first_name || ''} ${selectedDetail.creator.last_name || ''}`.trim() || selectedDetail.creator.email : selectedDetail.created_by_user_id}
+                    </Link>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                    <Link href={`/users?id=${selectedDetail.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                      {selectedDetail.modifier ? `${selectedDetail.modifier.first_name || ''} ${selectedDetail.modifier.last_name || ''}`.trim() || selectedDetail.modifier.email : selectedDetail.modified_by_user_id}
+                    </Link>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                    <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.created_datetime_utc).toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                    <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.modified_datetime_utc).toLocaleString()}</p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-between items-center pt-4 border-t border-terminal-border">

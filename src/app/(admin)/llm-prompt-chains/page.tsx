@@ -9,21 +9,26 @@ import Link from 'next/link'
 
 const PAGE_SIZE = 10
 
+interface LLMPromptChainWithAudit extends LLMPromptChain {
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
+}
+
 function LLMPromptChainsContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const idFilter = searchParams.get('id')
 
-  const [data, setData] = useState<LLMPromptChain[]>([])
+  const [data, setData] = useState<LLMPromptChainWithAudit[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
-  const [selectedDetail, setSelectedDetail] = useState<LLMPromptChain | null>(null)
+  const [selectedDetail, setSelectedDetail] = useState<LLMPromptChainWithAudit | null>(null)
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      let query = supabase.from('llm_prompt_chains').select('*', { count: 'exact' })
+      let query = supabase.from('llm_prompt_chains').select('*, creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
       
       if (idFilter) {
         query = query.eq('id', idFilter)
@@ -33,12 +38,12 @@ function LLMPromptChainsContent() {
         .order('id', { ascending: false })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
       
-      setData(data || [])
+      setData(data as any || [])
       setTotalCount(count || 0)
       setLoading(false)
 
       if (idFilter && data?.[0]) {
-        setSelectedDetail(data[0])
+        setSelectedDetail(data[0] as any)
       }
     }
     fetchData()
@@ -127,6 +132,33 @@ function LLMPromptChainsContent() {
                 <div className="space-y-1 border-t border-terminal-border pt-4">
                   <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">EXECUTION_START</p>
                   <p className="text-[10px] font-mono text-terminal-fg uppercase">{new Date(selectedDetail.created_datetime_utc).toString()}</p>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-terminal-border">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.creator ? `${selectedDetail.creator.first_name || ''} ${selectedDetail.creator.last_name || ''}`.trim() || selectedDetail.creator.email : selectedDetail.created_by_user_id}
+                      </Link>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.modifier ? `${selectedDetail.modifier.first_name || ''} ${selectedDetail.modifier.last_name || ''}`.trim() || selectedDetail.modifier.email : selectedDetail.modified_by_user_id}
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.created_datetime_utc).toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.modified_datetime_utc).toLocaleString()}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

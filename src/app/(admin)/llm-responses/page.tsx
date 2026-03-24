@@ -12,6 +12,8 @@ const PAGE_SIZE = 10
 interface LLMModelResponseWithJoins extends LLMModelResponse {
   llm_models: { id: number; name: string } | null
   humor_flavors: { id: number; slug: string } | null
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
 }
 
 function LLMResponsesContent() {
@@ -31,7 +33,7 @@ function LLMResponsesContent() {
       setLoading(true)
       let query = supabase
         .from('llm_model_responses')
-        .select('*, llm_models(id, name), humor_flavors(id, slug)', { count: 'exact' })
+        .select('*, profiles!profile_id(id), llm_models(id, name), humor_flavors(id, slug), creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
       
       if (idFilter) {
         query = query.eq('id', idFilter)
@@ -166,6 +168,33 @@ function LLMResponsesContent() {
                 <div className="border border-terminal-border p-3 bg-terminal-header">
                   <p className="text-[8px] font-bold text-terminal-dim uppercase mb-1 tracking-widest">LATENCY_TRACE</p>
                   <p className="text-[10px] font-bold uppercase text-terminal-fg">{selectedItem.processing_time_seconds} SECONDS</p>
+                </div>
+              </div>
+
+              <div className="space-y-4 pt-4 border-t border-terminal-border">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                    <Link href={`/users?id=${selectedItem.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                      {selectedItem.creator ? `${selectedItem.creator.first_name || ''} ${selectedItem.creator.last_name || ''}`.trim() || selectedItem.creator.email : selectedItem.created_by_user_id}
+                    </Link>
+                  </div>
+                  <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                    <Link href={`/users?id=${selectedItem.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                      {selectedItem.modifier ? `${selectedItem.modifier.first_name || ''} ${selectedItem.modifier.last_name || ''}`.trim() || selectedItem.modifier.email : selectedItem.modified_by_user_id}
+                    </Link>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                    <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedItem.created_datetime_utc).toLocaleString()}</p>
+                  </div>
+                  <div className="space-y-1 border border-terminal-border p-3 bg-terminal-header">
+                    <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                    <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedItem.modified_datetime_utc).toLocaleString()}</p>
+                  </div>
                 </div>
               </div>
 

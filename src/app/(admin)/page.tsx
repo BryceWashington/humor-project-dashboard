@@ -114,8 +114,8 @@ export default function Dashboard() {
           first_name, 
           last_name,
           email,
-          images(count),
-          captions(count)
+          images!profile_id(count),
+          captions!profile_id(count)
         `)
         .limit(10)
 

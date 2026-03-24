@@ -5,15 +5,21 @@ import { Cloud, Search, PlusCircle, ChevronLeft, ChevronRight, X } from 'lucide-
 import { createClient } from '@/utils/supabase/client'
 import { LLMProvider } from '@/types/database'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 const PAGE_SIZE = 10
+
+interface LLMProviderWithProfiles extends LLMProvider {
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
+}
 
 function LLMProvidersContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const idFilter = searchParams.get('id')
 
-  const [data, setData] = useState<LLMProvider[]>([])
+  const [data, setData] = useState<LLMProviderWithProfiles[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
@@ -21,13 +27,13 @@ function LLMProvidersContent() {
   
   const [isAdding, setIsAdding] = useState(false)
   const [editingItem, setEditingItem] = useState<LLMProvider | null>(null)
-  const [selectedDetail, setSelectedDetail] = useState<LLMProvider | null>(null)
+  const [selectedDetail, setSelectedDetail] = useState<LLMProviderWithProfiles | null>(null)
   const [formData, setFormData] = useState({ name: '' })
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const fetchData = async () => {
     setLoading(true)
-    let query = supabase.from('llm_providers').select('*', { count: 'exact' })
+    let query = supabase.from('llm_providers').select('*, creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
     
     if (idFilter) {
       query = query.eq('id', idFilter)
@@ -39,12 +45,12 @@ function LLMProvidersContent() {
       .order('name', { ascending: true })
       .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
     
-    setData(data || [])
+    setData(data as any || [])
     setTotalCount(count || 0)
     setLoading(false)
 
     if (idFilter && data?.[0]) {
-      setSelectedDetail(data[0])
+      setSelectedDetail(data[0] as any)
     }
   }
 
@@ -56,10 +62,26 @@ function LLMProvidersContent() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      alert('AUTH_ERROR: NO_USER_DETECTED')
+      setIsSubmitting(false)
+      return
+    }
+
+    const payload = {
+      ...formData,
+      modified_by_user_id: user.id,
+    }
+
     if (editingItem) {
-      await (supabase.from('llm_providers') as any).update(formData).eq('id', editingItem.id)
+      await (supabase.from('llm_providers') as any).update(payload).eq('id', editingItem.id)
     } else {
-      await (supabase.from('llm_providers') as any).insert(formData)
+      await (supabase.from('llm_providers') as any).insert({
+        ...payload,
+        created_by_user_id: user.id,
+      })
     }
     setIsSubmitting(false); setIsAdding(false); setEditingItem(null);
     setFormData({ name: '' }); fetchData();
@@ -166,6 +188,33 @@ function LLMProvidersContent() {
                 <div className="space-y-1">
                   <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">REGISTRATION_DATE</p>
                   <p className="text-[10px] font-mono text-terminal-dim uppercase">{new Date(selectedDetail.created_datetime_utc).toLocaleString()}</p>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-terminal-border">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.creator ? `${selectedDetail.creator.first_name || ''} ${selectedDetail.creator.last_name || ''}`.trim() || selectedDetail.creator.email : selectedDetail.created_by_user_id}
+                      </Link>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.modifier ? `${selectedDetail.modifier.first_name || ''} ${selectedDetail.modifier.last_name || ''}`.trim() || selectedDetail.modifier.email : selectedDetail.modified_by_user_id}
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.created_datetime_utc).toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.modified_datetime_utc).toLocaleString()}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

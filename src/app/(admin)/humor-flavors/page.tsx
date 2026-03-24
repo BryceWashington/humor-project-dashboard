@@ -5,25 +5,31 @@ import { Smile, Search, ChevronLeft, ChevronRight, X } from 'lucide-react'
 import { createClient } from '@/utils/supabase/client'
 import { HumorFlavor } from '@/types/database'
 import { useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 
 const PAGE_SIZE = 10
+
+interface HumorFlavorWithAudit extends HumorFlavor {
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
+}
 
 function HumorFlavorsContent() {
   const supabase = createClient()
   const searchParams = useSearchParams()
   const idFilter = searchParams.get('id')
 
-  const [data, setData] = useState<HumorFlavor[]>([])
+  const [data, setData] = useState<HumorFlavorWithAudit[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [page, setPage] = useState(0)
   const [totalCount, setTotalCount] = useState(0)
-  const [selectedDetail, setSelectedDetail] = useState<HumorFlavor | null>(null)
+  const [selectedDetail, setSelectedDetail] = useState<HumorFlavorWithAudit | null>(null)
 
   useEffect(() => {
     async function fetchData() {
       setLoading(true)
-      let query = supabase.from('humor_flavors').select('*', { count: 'exact' })
+      let query = supabase.from('humor_flavors').select('*, creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
       
       if (idFilter) {
         query = query.eq('id', idFilter)
@@ -35,12 +41,12 @@ function HumorFlavorsContent() {
         .order('id', { ascending: true })
         .range(page * PAGE_SIZE, (page + 1) * PAGE_SIZE - 1)
       
-      setData(data || [])
+      setData(data as any || [])
       setTotalCount(count || 0)
       setLoading(false)
 
       if (idFilter && data?.[0]) {
-        setSelectedDetail(data[0])
+        setSelectedDetail(data[0] as any)
       }
     }
     const timer = setTimeout(() => { fetchData() }, 300)
@@ -142,6 +148,33 @@ function HumorFlavorsContent() {
                 <div className="space-y-1">
                   <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">STRATEGY_DESCRIPTION</p>
                   <p className="text-sm text-terminal-fg leading-relaxed italic border border-terminal-border p-4 bg-terminal-header">{selectedDetail.description || 'NO_DESCRIPTION_PROVIDED'}</p>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-terminal-border">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.creator ? `${selectedDetail.creator.first_name || ''} ${selectedDetail.creator.last_name || ''}`.trim() || selectedDetail.creator.email : selectedDetail.created_by_user_id}
+                      </Link>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.modifier ? `${selectedDetail.modifier.first_name || ''} ${selectedDetail.modifier.last_name || ''}`.trim() || selectedDetail.modifier.email : selectedDetail.modified_by_user_id}
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.created_datetime_utc).toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.modified_datetime_utc).toLocaleString()}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -11,6 +11,8 @@ const PAGE_SIZE = 10
 
 interface HumorFlavorMixWithFlavor extends HumorFlavorMix {
   humor_flavors: { id: number; slug: string } | null
+  creator: { first_name: string | null; last_name: string | null; email: string | null } | null
+  modifier: { first_name: string | null; last_name: string | null; email: string | null } | null
 }
 
 function HumorMixContent() {
@@ -33,7 +35,7 @@ function HumorMixContent() {
     setLoading(true)
     let query = supabase
       .from('humor_flavor_mix')
-      .select('*, humor_flavors(id, slug)', { count: 'exact' })
+      .select('*, humor_flavors(id, slug), creator:profiles!created_by_user_id(first_name, last_name, email), modifier:profiles!modified_by_user_id(first_name, last_name, email)', { count: 'exact' })
     
     if (idFilter) {
       query = query.eq('id', idFilter)
@@ -61,9 +63,18 @@ function HumorMixContent() {
     e.preventDefault()
     if (!editingItem) return
     setIsSubmitting(true)
+    
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      alert('AUTH_ERROR: NO_USER_DETECTED')
+      setIsSubmitting(false)
+      return
+    }
+
     await (supabase.from('humor_flavor_mix') as any).update({ 
       humor_flavor_id: formData.humor_flavor_id,
-      caption_count: formData.caption_count
+      caption_count: formData.caption_count,
+      modified_by_user_id: user.id
     }).eq('id', editingItem.id)
     setIsSubmitting(false)
     setEditingItem(null)
@@ -171,6 +182,33 @@ function HumorMixContent() {
                 <div className="space-y-1 border-t border-terminal-border pt-4">
                   <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CONFIGURATION_ID</p>
                   <p className="text-[10px] font-mono text-terminal-dim">{selectedDetail.id}</p>
+                </div>
+
+                <div className="space-y-3 pt-4 border-t border-terminal-border">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.created_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.creator ? `${selectedDetail.creator.first_name || ''} ${selectedDetail.creator.last_name || ''}`.trim() || selectedDetail.creator.email : selectedDetail.created_by_user_id}
+                      </Link>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_BY</p>
+                      <Link href={`/users?id=${selectedDetail.modified_by_user_id}`} className="text-[9px] font-mono text-terminal-accent hover:underline truncate block">
+                        {selectedDetail.modifier ? `${selectedDetail.modifier.first_name || ''} ${selectedDetail.modifier.last_name || ''}`.trim() || selectedDetail.modifier.email : selectedDetail.modified_by_user_id}
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">CREATED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.created_datetime_utc).toLocaleString()}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-[8px] font-bold text-terminal-dim uppercase tracking-widest">MODIFIED_AT</p>
+                      <p className="text-[9px] font-mono text-terminal-fg">{new Date(selectedDetail.modified_datetime_utc).toLocaleString()}</p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
