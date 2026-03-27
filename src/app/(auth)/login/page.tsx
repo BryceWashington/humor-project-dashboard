@@ -61,7 +61,7 @@ function LoginContent() {
       <div className="terminal-card w-full max-w-lg p-8 relative overflow-hidden">
         <div className="flex items-center gap-2 mb-8 border-b border-terminal-border pb-4">
           <TerminalIcon className="w-6 h-6 text-terminal-accent" />
-          <h1 className="text-2xl font-bold tracking-tighter uppercase">Access Terminal</h1>
+          <h1 className="text-2xl font-bold tracking-tighter uppercase">Admin Dashboard</h1>
         </div>
 
         {error === 'unauthorized' && (

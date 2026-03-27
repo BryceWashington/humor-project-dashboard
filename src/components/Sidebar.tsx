@@ -45,6 +45,12 @@ const sections = [
       { href: '/signup-domains', icon: Globe, label: 'DOMAINS' },
       { href: '/whitelisted-emails', icon: Mail, label: 'WHITELIST' },
     ]
+  },
+  {
+    label: 'SYSTEM',
+    items: [
+      { href: '/help', icon: HelpCircle, label: 'HELP' },
+    ]
   }
 ]
 
@@ -63,7 +69,7 @@ export default function Sidebar() {
         {/* Terminal Header */}
         <div className="flex items-center gap-2 mb-2">
           <Terminal className="w-5 h-5 text-terminal-accent" />
-          <h2 className="text-xl font-bold tracking-tighter text-terminal-fg">SYSADM v1.0</h2>
+          <h2 className="text-xl font-bold tracking-tighter text-terminal-fg">DASHBOARD</h2>
         </div>
         
         <div className="border-b border-terminal-border mb-2" />

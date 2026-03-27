@@ -26,3 +26,8 @@
 - [x] Engagement Heatmap (Caption creations)
 - [x] Distribution Chart (Images per profile)
 - [x] Activity Leaderboard (Top users)
+
+## Phase 6: Documentation & Help ✅
+- [x] Help page with feature directory
+- [x] Resource access level documentation
+- [x] Sidebar integration for system help
