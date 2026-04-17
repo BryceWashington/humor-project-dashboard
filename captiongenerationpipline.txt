@@ -157,4 +157,3 @@ curl -X POST https://www.almostcrackd.ai/pipeline/generate-captions
 “humorFlavorId”:
 
 }’
-
